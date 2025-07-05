@@ -1,5 +1,6 @@
 package states.stages;
 
+import openfl.media.Sound;
 import states.stages.objects.*;
 
 class Mall extends BaseStage
@@ -15,7 +16,7 @@ class Mall extends BaseStage
 		bg.updateHitbox();
 		add(bg);
 
-		if(!ClientPrefs.data.lowQuality) {
+		if (!ClientPrefs.data.lowQuality) {
 			upperBoppers = new BGSprite('christmas/upperBop', -240, -90, 0.33, 0.33, ['Upper Crowd Bob']);
 			upperBoppers.setGraphicSize(Std.int(upperBoppers.width * 0.85));
 			upperBoppers.updateHitbox();
@@ -30,19 +31,24 @@ class Mall extends BaseStage
 		var tree:BGSprite = new BGSprite('christmas/christmasTree', 370, -250, 0.40, 0.40);
 		add(tree);
 
-		bottomBoppers = new MallCrowd(-300, 140);
+		bottomBoppers = new MallCrowd(-300, 120);
 		add(bottomBoppers);
 
-		var fgSnow:BGSprite = new BGSprite('christmas/fgSnow', -600, 700);
+		var fgSnow:BGSprite = new BGSprite('christmas/fgSnow', -600, 720);
+		fgSnow.setGraphicSize(Std.int(fgSnow.width * 1.3));
+		fgSnow.updateHitbox();
 		add(fgSnow);
 
 		santa = new BGSprite('christmas/santa', -840, 150, 1, 1, ['santa idle in fear']);
-		add(santa);
-		Paths.sound('Lights_Shut_off');
+		precacheSound('Lights_Shut_off');
 		setDefaultGF('gf-christmas');
 
 		if(isStoryMode && !seenCutscene)
 			setEndCallback(eggnogEndCutscene);
+	}
+
+	override function createPost() {
+		add(santa);
 	}
 
 	override function countdownTick(count:Countdown, num:Int) everyoneDance();
