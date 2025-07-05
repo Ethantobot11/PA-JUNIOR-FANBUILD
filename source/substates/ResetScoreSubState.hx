@@ -22,11 +22,10 @@ class ResetScoreSubState extends MusicBeatSubstate
 	// Week -1 = Freeplay
 	public function new(song:String, difficulty:Int, character:String, week:Int = -1)
 	{
+		controls.isInSubstate = true;
 		this.song = song;
 		this.difficulty = difficulty;
 		this.week = week;
-
-                controls.isInSubstate = true;
 
 		super();
 
@@ -46,6 +45,7 @@ class ResetScoreSubState extends MusicBeatSubstate
 		text.screenCenter(X);
 		alphabetArray.push(text);
 		text.alpha = 0;
+		text.scrollFactor.set();
 		add(text);
 		var text:Alphabet = new Alphabet(0, text.y + 90, name, true);
 		text.scaleX = tooLong;
@@ -53,6 +53,7 @@ class ResetScoreSubState extends MusicBeatSubstate
 		if(week == -1) text.x += 60 * tooLong;
 		alphabetArray.push(text);
 		text.alpha = 0;
+		text.scrollFactor.set();
 		add(text);
 		if(week == -1) {
 			icon = new HealthIcon(character);
@@ -66,16 +67,17 @@ class ResetScoreSubState extends MusicBeatSubstate
 		yesText = new Alphabet(0, text.y + 150, 'Yes', true);
 		yesText.screenCenter(X);
 		yesText.x -= 200;
+		yesText.scrollFactor.set();
 		add(yesText);
 		noText = new Alphabet(0, text.y + 150, 'No', true);
 		noText.screenCenter(X);
 		noText.x += 200;
+		noText.scrollFactor.set();
 		add(noText);
-
-		addTouchPad("LEFT_RIGHT", "A_B");
-		addTouchPadCamera();
-
 		updateOptions();
+
+		addTouchPad('LEFT_RIGHT', 'A_B');
+		addTouchPadCamera();
 	}
 
 	override function update(elapsed:Float)
@@ -96,8 +98,8 @@ class ResetScoreSubState extends MusicBeatSubstate
 		}
 		if(controls.BACK) {
 			FlxG.sound.play(Paths.sound('cancelMenu'), 1);
-			close();
 			controls.isInSubstate = false;
+			close();
 		} else if(controls.ACCEPT) {
 			if(onYes) {
 				if(week == -1) {
@@ -107,12 +109,8 @@ class ResetScoreSubState extends MusicBeatSubstate
 				}
 			}
 			FlxG.sound.play(Paths.sound('cancelMenu'), 1);
-                        controls.isInSubstate = false;
+			controls.isInSubstate = false;
 			close();
-		}
-		if (touchPad == null){ //sometimes it dosent add the tpad, hopefully this fixes it
-		addTouchPad("LEFT_RIGHT", "A_B");
-		addTouchPadCamera();
 		}
 		super.update(elapsed);
 	}
