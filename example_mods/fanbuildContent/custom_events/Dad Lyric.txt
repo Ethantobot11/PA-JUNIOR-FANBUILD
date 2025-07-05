@@ -1,0 +1,4 @@
+Set Lyric Text With Dad Color
+
+Value 1: Dialouge (should be something like: "FINN:/nIM GONNA KILL YOU!!!) /n just moves text down a line
+Value 2: Time before the dialogue fades out
