@@ -91,9 +91,15 @@ class BaseStage extends FlxBasic
 	function remove(object:FlxBasic) game.remove(object);
 	function insert(position:Int, object:FlxBasic) game.insert(position, object);
 	
-	public function addBehindGF(obj:FlxBasic) insert(members.indexOf(game.gfGroup), obj);
-	public function addBehindBF(obj:FlxBasic) insert(members.indexOf(game.boyfriendGroup), obj);
-	public function addBehindDad(obj:FlxBasic) insert(members.indexOf(game.dadGroup), obj);
+	public function addBehindGF(obj:FlxSprite, ?literally:Bool = false) { 
+		if (literally) {
+			gfGroup.insert(gfGroup.members.indexOf(gf), obj);
+			return;
+		}
+		insert(members.indexOf(game.gfGroup), obj);
+	}
+	public function addBehindBF(obj:FlxSprite) insert(members.indexOf(game.boyfriendGroup), obj);
+	public function addBehindDad(obj:FlxSprite) insert(members.indexOf(game.dadGroup), obj);
 	public function setDefaultGF(name:String) //Fix for the Chart Editor on Base Game stages
 	{
 		var gfVersion:String = PlayState.SONG.gfVersion;
@@ -114,6 +120,27 @@ class BaseStage extends FlxBasic
 	{
 		if(!onPlayState) return;
 		PlayState.instance.endCallback = myfn;
+	}
+
+	//precache functions
+	public function precacheImage(key:String) precache(key, 'image');
+	public function precacheSound(key:String) precache(key, 'sound');
+	public function precacheMusic(key:String) precache(key, 'music');
+
+	public function precache(key:String, type:String)
+	{
+		if(onPlayState)
+			PlayState.instance.precacheList.set(key, type);
+
+		switch(type)
+		{
+			case 'image':
+				Paths.image(key);
+			case 'sound':
+				Paths.sound(key);
+			case 'music':
+				Paths.music(key);
+		}
 	}
 
 	// overrides
