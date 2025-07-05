@@ -1,0 +1,146 @@
+{
+	"animations": [
+		{
+			"loop": false,
+			"offsets": [
+				-133,
+				-147
+			],
+			"anim": "idle",
+			"fps": 24,
+			"name": "Idle",
+			"indices": []
+		},
+		{
+			"loop": false,
+			"offsets": [
+				194,
+				-43
+			],
+			"anim": "singLEFT",
+			"fps": 24,
+			"name": "Left",
+			"indices": []
+		},
+		{
+			"loop": false,
+			"offsets": [
+				143,
+				-28
+			],
+			"anim": "singDOWN",
+			"fps": 24,
+			"name": "Down",
+			"indices": []
+		},
+		{
+			"loop": false,
+			"offsets": [
+				-91,
+				124
+			],
+			"anim": "singUP",
+			"fps": 24,
+			"name": "Up",
+			"indices": []
+		},
+		{
+			"loop": false,
+			"offsets": [
+				-79,
+				-42
+			],
+			"anim": "singRIGHT",
+			"fps": 24,
+			"name": "Right",
+			"indices": []
+		},
+		{
+			"offsets": [
+				-100,
+				-87
+			],
+			"loop": true,
+			"fps": 24,
+			"anim": "hey",
+			"indices": [],
+			"name": "HEY Pose"
+		},
+		{
+			"offsets": [
+				33,
+				40
+			],
+			"loop": false,
+			"fps": 24,
+			"anim": "cmon",
+			"indices": [],
+			"name": "Cmon"
+		},
+		{
+			"offsets": [
+				112,
+				-79
+			],
+			"loop": false,
+			"fps": 24,
+			"anim": "singDOWNmiss",
+			"indices": [],
+			"name": "MissD"
+		},
+		{
+			"offsets": [
+				-73,
+				-54
+			],
+			"loop": false,
+			"fps": 24,
+			"anim": "singRIGHTmiss",
+			"indices": [],
+			"name": "MissR"
+		},
+		{
+			"offsets": [
+				-89,
+				116
+			],
+			"loop": false,
+			"fps": 24,
+			"anim": "singUPmiss",
+			"indices": [],
+			"name": "MissU"
+		},
+		{
+			"offsets": [
+				193,
+				-47
+			],
+			"loop": false,
+			"fps": 24,
+			"anim": "singLEFTmiss",
+			"indices": [],
+			"name": "MissL"
+		}
+	],
+	"vocals_file": "",
+	"no_antialiasing": false,
+	"image": "characters/pibby",
+	"position": [
+		10,
+		340
+	],
+	"healthicon": "pibby",
+	"flip_x": false,
+	"healthbar_colors": [
+		238,
+		97,
+		170
+	],
+	"camera_position": [
+		-420,
+		-20
+	],
+	"sing_duration": 5,
+	"scale": 2,
+	"_editor_isPlayer": false
+}
