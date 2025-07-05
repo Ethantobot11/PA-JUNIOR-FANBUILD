@@ -1,20 +1,32 @@
 package backend;
 
+import io.colyseus.serializer.schema.types.*;
+import externs.WinAPI;
+import flixel.util.FlxSave;
+
 import openfl.utils.Assets;
 import lime.utils.Assets as LimeAssets;
 
+#if sys
+import backend.io.PsychFile as File;
+import backend.io.PsychFileSystem as FileSystem;
+#end
+
+#if cpp
+@:cppFileCode('#include <thread>')
+#end
 class CoolUtil
 {
 	inline public static function quantize(f:Float, snap:Float){
 		// changed so this actually works lol
 		var m:Float = Math.fround(f * snap);
-		//trace(snap);
 		return (m / snap);
 	}
 
 	inline public static function capitalize(text:String)
 		return text.charAt(0).toUpperCase() + text.substr(1).toLowerCase();
 
+	@:unreflective
 	inline public static function coolTextFile(path:String):Array<String>
 	{
 		var daList:String = null;
@@ -62,21 +74,7 @@ class CoolUtil
 		var newValue:Float = Math.floor(value * tempMult);
 		return newValue / tempMult;
 	}
-
-	#if (android || linux)
-	public static function sortAlphabetically(list:Array<String>):Array<String> {
-		if (list == null) return [];
-
-		list.sort((a, b) -> {
-			var upperA = a.toUpperCase();
-			var upperB = b.toUpperCase();
-			
-			return upperA < upperB ? -1 : upperA > upperB ? 1 : 0;
-		});
-		return list;
-	}
-	#end
-
+	
 	inline public static function dominantColor(sprite:flixel.FlxSprite):Int
 	{
 		var countByColor:Map<Int, Int> = [];
@@ -113,6 +111,7 @@ class CoolUtil
 		return dumbArray;
 	}
 
+	@:unreflective
 	inline public static function browserLoad(site:String) {
 		#if linux
 		Sys.command('/usr/bin/xdg-open', [site]);
@@ -121,55 +120,33 @@ class CoolUtil
 		#end
 	}
 
-	inline public static function openFolder(folder:String, absolute:Bool = false) {
-		#if sys
-			if(!absolute) folder =  Sys.getCwd() + '$folder';
-
-			folder = folder.replace('/', '\\');
-			if(folder.endsWith('/')) folder.substr(0, folder.length - 1);
-
-			#if linux
-			var command:String = '/usr/bin/xdg-open';
-			#else
-			var command:String = 'explorer.exe';
-			#end
-			Sys.command(command, [folder]);
-			trace('$command $folder');
-		#else
-			FlxG.error("Platform is not supported for CoolUtil.openFolder");
-		#end
-	}
-
-	/**
-		Helper Function to Fix Save Files for Flixel 5
-
-		-- EDIT: [November 29, 2023] --
-
-		this function is used to get the save path, period.
-		since newer flixel versions are being enforced anyways.
-		@crowplexus
+	/** Quick Function to Fix Save Files for Flixel 5
+		if you are making a mod, you are gonna wanna change "ShadowMario" to something else
+		so Base Psych saves won't conflict with yours
+		@BeastlyGabi
 	**/
-	@:access(flixel.util.FlxSave.validate)
-	inline public static function getSavePath():String {
-		final company:String = FlxG.stage.application.meta.get('company');
-		// #if (flixel < "5.0.0") return company; #else
-		return '${company}/${flixel.util.FlxSave.validate(FlxG.stage.application.meta.get('file'))}';
-		// #end
+	inline public static function getSavePath(folder:String = 'ShadowMario'):String {
+		@:privateAccess
+		return #if (flixel < "5.0.0") folder #else FlxG.stage.application.meta.get('company')
+			+ '/'
+			+ FlxSave.validate(FlxG.stage.application.meta.get('file')) #end;
 	}
 
-	public static function setTextBorderFromString(text:FlxText, border:String)
-	{
-		switch(border.toLowerCase().trim())
-		{
-			case 'shadow':
-				text.borderStyle = SHADOW;
-			case 'outline':
-				text.borderStyle = OUTLINE;
-			case 'outline_fast', 'outlinefast':
-				text.borderStyle = OUTLINE_FAST;
-			default:
-				text.borderStyle = NONE;
+	public static function setDarkMode(enabled:Bool) {
+		WinAPI.setDarkMode(getWindowTitle(), enabled);
+	}
+
+	public static function getWindowTitle():String {
+		@:privateAccess var attributes = lime.app.Application.current.window.__attributes;
+		return Reflect.hasField(attributes, "title") ? attributes.title : "Lime Application";
+	}
+
+	public static function asta<T>(arr:ArraySchema<T>) {
+		var haxArr = [];
+		for (i => thing in arr.items) {
+			haxArr[i] = thing;
 		}
+		return haxArr;
 	}
 
 	public static function showPopUp(message:String, title:String):Void
@@ -180,4 +157,14 @@ class CoolUtil
 		FlxG.stage.window.alert(message, title);
 		//#end
 	}
+
+	#if cpp
+    @:functionCode('
+        return std::thread::hardware_concurrency();
+    ')
+	#end
+    public static function getCPUThreadsCount():Int
+    {
+        return 1;
+    }
 }
