@@ -1,0 +1,4 @@
+Set Distortion Shader Amount
+
+Value 1: Binary Intensity (Typically: 4-6)
+Value 2: Negativity (Typically: 1-2)
