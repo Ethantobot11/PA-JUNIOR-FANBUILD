@@ -1,0 +1,8 @@
+{
+	"name": "Junior's PA Fanbuild",
+	"description": "Made by JuniorNovoa (Yxerx), with help from many others!!\nContact for any questions or concerns: ''juniornovoa''                                              (Discord)\n\nGeneral Info:\n> Play on PsychEngine 0.7.3 for the best experience.\n> Play at 60fps, higher fps causes crashes and other bugs cause of lua.\n",
+	"restart": false,
+	"runsGlobally": false,
+	"color": [127.5, 127.5, 127.5],
+	"discordRPC": ""
+}
