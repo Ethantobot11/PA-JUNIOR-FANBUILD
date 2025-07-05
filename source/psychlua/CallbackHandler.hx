@@ -1,4 +1,3 @@
-#if LUA_ALLOWED
 package psychlua;
 
 class CallbackHandler
@@ -7,7 +6,6 @@ class CallbackHandler
 	{
 		try
 		{
-			//trace('calling $fname');
 			var cbf:Dynamic = Lua_helper.callbacks.get(fname);
 
 			//Local functions have the lowest priority
@@ -15,23 +13,19 @@ class CallbackHandler
 			//so that it only loops on reserved/special functions
 			if(cbf == null) 
 			{
-				//trace('checking last script');
-				var last:FunkinLua = FunkinLua.lastCalledScript;
-				if(last == null || last.lua != l)
-				{
-					//trace('looping thru scripts');
-					for (script in PlayState.instance.luaArray)
-						if(script != FunkinLua.lastCalledScript && script != null && script.lua == l)
-						{
-							//trace('found script');
-							cbf = script.callbacks.get(fname);
-							break;
-						}
-				}
-				else cbf = last.callbacks.get(fname);
+				//trace('looping thru scripts');
+				for (script in PlayState.instance.luaArray)
+					if(script != null && script.lua == l)
+					{
+						//trace('found script');
+						cbf = script.callbacks.get(fname);
+						break;
+					}
 			}
 			
-			if(cbf == null) return 0;
+			if (cbf == null) {
+				return returnNil(l);
+			}
 
 			var nparams:Int = Lua.gettop(l);
 			var args:Array<Dynamic> = [];
@@ -52,11 +46,29 @@ class CallbackHandler
 		}
 		catch(e:Dynamic)
 		{
-			if(Lua_helper.sendErrorsToLua) {LuaL.error(l, 'CALLBACK ERROR! ${if(e.message != null) e.message else e}');return 0;}
-			trace(e);
-			throw(e);
+			if (ClientPrefs.isDebug() && e != null) {
+				trace(fname);
+				var alertMsg:String = "";
+				var daError:String = "";
+				var callStack = haxe.CallStack.exceptionStack(true);
+	
+				alertMsg += e + "\n";
+				daError += haxe.CallStack.toString(callStack) + "\n";
+				if (e is haxe.Exception)
+					daError += "\n" + cast(e, haxe.Exception).stack.toString() + "\n";
+				alertMsg += daError;
+	
+				trace(alertMsg);
+				FunkinLua.trace('Lua: CALLBACK ERROR! ${if (e.message != null) e.message else e}');
+				//if(Lua_helper.sendErrorsToLua) {LuaL.error(l, 'CALLBACK ERROR! ${if(e.message != null) e.message else e}');return 0;}
+				// throw(e);
+			}
 		}
-		return 0;
+		return returnNil(l);
+	}
+
+	static function returnNil(l:State) {
+		Convert.toLua(l, null);
+		return 1;
 	}
 }
-#end
