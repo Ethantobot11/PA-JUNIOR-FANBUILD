@@ -1,0 +1,4 @@
+Set Must Hit Section Amount
+
+Value 1: Camera Zoom
+Value 2: force camGame zoom?
