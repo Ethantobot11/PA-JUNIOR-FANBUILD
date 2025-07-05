@@ -5,7 +5,10 @@ import flash.errors.Error;
 import flash.events.KeyboardEvent;
 import flash.geom.Rectangle;
 import flixel.addons.ui.FlxUI.NamedString;
+
+import flixel.math.FlxPoint;
 import flixel.math.FlxRect;
+
 import flixel.util.FlxDestroyUtil;
 
 /**
@@ -304,7 +307,7 @@ class FlxInputText extends FlxText
 		if (FlxG.mouse.justPressed)
 		{
 			var hadFocus:Bool = hasFocus;
-			if (FlxG.mouse.overlaps(this,camera))
+			if (mouseOverlapping())
 			{
 				caretIndex = getCaretIndex();
 				hasFocus = FlxG.stage.window.textInputEnabled = true;
@@ -313,7 +316,6 @@ class FlxInputText extends FlxText
 			}
 			else
 			{
-				//hasFocus = FlxG.stage.window.textInputEnabled = false;
 				hasFocus = false;
 				if (hadFocus && focusLost != null)
 					focusLost();
@@ -322,6 +324,17 @@ class FlxInputText extends FlxText
 		#end
 	}
 	
+	function mouseOverlapping()
+	{
+		var mousePoint = FlxG.mouse.getScreenPosition(camera);
+		var objPoint = this.getScreenPosition(null, camera);
+		if(mousePoint.x >= objPoint.x && mousePoint.y >= objPoint.y &&
+			mousePoint.x < objPoint.x + this.width && mousePoint.y < objPoint.y + this.height)
+		{
+			return true;
+		}
+		return false;
+	}
 
 	/**
 	 * Handles keypresses generated on the stage.
@@ -770,6 +783,7 @@ class FlxInputText extends FlxText
 					caret.pixels.fillRect(r, caretC); // draw caret
 					// we need to offset caret's drawing position since the caret is now larger than normal
 					caret.offset.x = caret.offset.y = borderSize;
+				case _: //temp fix for 5.9.0
 			}
 			// Update width/height so caret's dimensions match its pixels
 			caret.width = cw;
