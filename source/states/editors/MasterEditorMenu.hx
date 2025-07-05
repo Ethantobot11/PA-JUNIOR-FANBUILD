@@ -2,6 +2,10 @@ package states.editors;
 
 import backend.WeekData;
 
+#if MODS_ALLOWED
+import backend.io.PsychFileSystem as FileSystem;
+#end
+
 import objects.Character;
 
 import states.MainMenuState;
@@ -30,7 +34,7 @@ class MasterEditorMenu extends MusicBeatState
 		FlxG.camera.bgColor = FlxColor.BLACK;
 		#if DISCORD_ALLOWED
 		// Updating Discord Rich Presence
-		DiscordClient.changePresence("Editors Main Menu", null);
+		DiscordClient.changePresence("In the Menus", "Master Editor Menu");
 		#end
 
 		var bg:FlxSprite = new FlxSprite().loadGraphic(Paths.image('menuDesat'));
@@ -72,12 +76,8 @@ class MasterEditorMenu extends MusicBeatState
 		changeSelection();
 
 		FlxG.mouse.visible = false;
-
-		#if MODS_ALLOWED
-		addTouchPad("LEFT_FULL", "A_B");
-		#else
-		addTouchPad("UP_DOWN", "A_B");
-		#end
+		
+		addTouchPad(#if MODS_ALLOWED "LEFT_FULL" #else "UP_DOWN" #end, "A_B");
 
 		super.create();
 	}
@@ -105,7 +105,7 @@ class MasterEditorMenu extends MusicBeatState
 
 		if (controls.BACK)
 		{
-			MusicBeatState.switchState(new MainMenuState());
+			FlxG.switchState(() -> new MainMenuState());
 		}
 
 		if (controls.ACCEPT)
@@ -116,18 +116,20 @@ class MasterEditorMenu extends MusicBeatState
 				case 'Character Editor':
 					LoadingState.loadAndSwitchState(new CharacterEditorState(Character.DEFAULT_CHARACTER, false));
 				case 'Week Editor':
-					MusicBeatState.switchState(new WeekEditorState());
+					FlxG.switchState(() -> new WeekEditorState());
 				case 'Menu Character Editor':
-					MusicBeatState.switchState(new MenuCharacterEditorState());
+					FlxG.switchState(() -> new MenuCharacterEditorState());
 				case 'Dialogue Editor':
 					LoadingState.loadAndSwitchState(new DialogueEditorState(), false);
 				case 'Dialogue Portrait Editor':
 					LoadingState.loadAndSwitchState(new DialogueCharacterEditorState(), false);
 				case 'Note Splash Debug':
-					MusicBeatState.switchState(new NoteSplashDebugState());
+					LoadingState.loadAndSwitchState(new NoteSplashDebugState());
 			}
 			FlxG.sound.music.volume = 0;
+			#if PRELOAD_ALL
 			FreeplayState.destroyFreeplayVocals();
+			#end
 		}
 		
 		var bullShit:Int = 0;
