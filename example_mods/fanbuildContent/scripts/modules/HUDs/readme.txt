@@ -1,0 +1,2 @@
+Teaser Script automatically gets initialized by Module Manager.
+if there is a script that is the same name as the week, for example "finn", the module will run "scripts/modules/HUDs/finn.lua" automatically.
