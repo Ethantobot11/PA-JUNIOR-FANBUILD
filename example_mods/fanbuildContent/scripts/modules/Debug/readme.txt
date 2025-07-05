@@ -1,0 +1,1 @@
+These scripts are only ran on Debug builds!
