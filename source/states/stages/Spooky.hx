@@ -1,9 +1,12 @@
 package states.stages;
 
+import flixel.math.FlxPoint;
+
 class Spooky extends BaseStage
 {
 	var halloweenBG:BGSprite;
 	var halloweenWhite:BGSprite;
+	public var room:online.states.RoomState = null;
 	override function create()
 	{
 		if(!ClientPrefs.data.lowQuality) {
@@ -11,11 +14,12 @@ class Spooky extends BaseStage
 		} else {
 			halloweenBG = new BGSprite('halloween_bg_low', -200, -100);
 		}
-		add(halloweenBG);
+		halloweenBG.cameras = this.cameras;
+		untyped (room ?? this).add(halloweenBG);
 
 		//PRECACHE SOUNDS
-		Paths.sound('thunder_1');
-		Paths.sound('thunder_2');
+		precacheSound('thunder_1');
+		precacheSound('thunder_2');
 
 		//Monster cutscene
 		if (isStoryMode && !seenCutscene)
@@ -33,7 +37,8 @@ class Spooky extends BaseStage
 		halloweenWhite.makeGraphic(Std.int(FlxG.width * 2), Std.int(FlxG.height * 2), FlxColor.WHITE);
 		halloweenWhite.alpha = 0;
 		halloweenWhite.blend = ADD;
-		add(halloweenWhite);
+		halloweenWhite.cameras = this.cameras;
+		untyped (room ?? this).add(halloweenWhite);
 	}
 
 	var lightningStrikeBeat:Int = 0;
@@ -54,6 +59,10 @@ class Spooky extends BaseStage
 		lightningStrikeBeat = curBeat;
 		lightningOffset = FlxG.random.int(8, 24);
 
+		var boyfriend = room != null ? room.p1 : this.boyfriend;
+		var dad = room != null ? room.p2 : this.dad;
+		var dad = room != null ? room.p2 : this.dad;
+
 		if(boyfriend.animOffsets.exists('scared')) {
 			boyfriend.playAnim('scared', true);
 		}
@@ -66,7 +75,7 @@ class Spooky extends BaseStage
 			gf.playAnim('scared', true);
 		}
 
-		if(ClientPrefs.data.camZooms) {
+		if (room == null && ClientPrefs.data.camZooms) {
 			FlxG.camera.zoom += 0.015;
 			camHUD.zoom += 0.03;
 
