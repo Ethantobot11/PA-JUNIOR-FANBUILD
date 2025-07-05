@@ -15,9 +15,14 @@ import flixel.ui.FlxButton;
 import openfl.net.FileReference;
 import openfl.events.Event;
 import openfl.events.IOErrorEvent;
-import flash.net.FileFilter;
+import openfl.net.FileFilter;
 import lime.system.Clipboard;
-import haxe.Json;
+import tjson.TJSON as Json;
+
+#if sys
+import backend.io.PsychFile as File;
+import backend.io.PsychFileSystem as FileSystem;
+#end
 
 import objects.HealthIcon;
 import objects.MenuCharacter;
@@ -136,7 +141,7 @@ class WeekEditorState extends MusicBeatState
 		add(loadWeekButton);
 		
 		var freeplayButton:FlxButton = new FlxButton(0, 650, "Freeplay", function() {
-			MusicBeatState.switchState(new WeekEditorFreeplayState(weekFile));
+			FlxG.switchState(() -> new WeekEditorFreeplayState(weekFile));
 			
 		});
 		freeplayButton.screenCenter(X);
@@ -325,7 +330,7 @@ class WeekEditorState extends MusicBeatState
 		var isMissing:Bool = true;
 		if(assetName != null && assetName.length > 0) {
 			if( #if MODS_ALLOWED FileSystem.exists(Paths.modsImages('menubackgrounds/menu_' + assetName)) || #end
-			Assets.exists(Paths.getPath('images/menubackgrounds/menu_' + assetName + '.png', IMAGE), IMAGE)) {
+			Assets.exists(Paths.getPath('images/menubackgrounds/menu_' + assetName + '.astc', BINARY), BINARY)) {
 				bgSprite.loadGraphic(Paths.image('menubackgrounds/menu_' + assetName));
 				isMissing = false;
 			}
@@ -344,7 +349,7 @@ class WeekEditorState extends MusicBeatState
 		var isMissing:Bool = true;
 		if(assetName != null && assetName.length > 0) {
 			if( #if MODS_ALLOWED FileSystem.exists(Paths.modsImages('storymenu/' + assetName)) || #end
-			Assets.exists(Paths.getPath('images/storymenu/' + assetName + '.png', IMAGE), IMAGE)) {
+			Assets.exists(Paths.getPath('images/storymenu/' + assetName + '.astc', BINARY), BINARY)) {
 				weekThing.loadGraphic(Paths.image('storymenu/' + assetName));
 				isMissing = false;
 			}
@@ -353,7 +358,7 @@ class WeekEditorState extends MusicBeatState
 		if(isMissing) {
 			weekThing.visible = false;
 			missingFileText.visible = true;
-			missingFileText.text = 'MISSING FILE: images/storymenu/' + assetName + '.png';
+			missingFileText.text = 'MISSING FILE: images/storymenu/' + assetName;
 		}
 		recalculateStuffPosition();
 
@@ -434,8 +439,8 @@ class WeekEditorState extends MusicBeatState
 		if(!blockInput) {
 			ClientPrefs.toggleVolumeKeys(true);
 			if(FlxG.keys.justPressed.ESCAPE || touchPad.buttonB.justPressed) {
-				MusicBeatState.switchState(new MasterEditorMenu());
-				FlxG.sound.playMusic(Paths.music('freakyMenu'));
+				FlxG.switchState(() -> new MasterEditorMenu());
+				states.TitleState.playFreakyMusic();
 			}
 		}
 
@@ -454,7 +459,7 @@ class WeekEditorState extends MusicBeatState
 	public static function loadWeek() {
 		var jsonFilter:FileFilter = new FileFilter('JSON', 'json');
 		_file = new FileReference();
-		_file.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
+		_file.addEventListener(Event.SELECT, onLoadComplete);
 		_file.addEventListener(Event.CANCEL, onLoadCancel);
 		_file.addEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file.browse([jsonFilter]);
@@ -464,7 +469,7 @@ class WeekEditorState extends MusicBeatState
 	public static var loadError:Bool = false;
 	private static function onLoadComplete(_):Void
 	{
-		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
+		_file.removeEventListener(Event.SELECT, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 
@@ -502,7 +507,7 @@ class WeekEditorState extends MusicBeatState
 		*/
 		private static function onLoadCancel(_):Void
 	{
-		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
+		_file.removeEventListener(Event.SELECT, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file = null;
@@ -514,7 +519,7 @@ class WeekEditorState extends MusicBeatState
 		*/
 	private static function onLoadError(_):Void
 	{
-		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
+		_file.removeEventListener(Event.SELECT, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file = null;
@@ -529,7 +534,7 @@ class WeekEditorState extends MusicBeatState
 			StorageUtil.saveContent('$weekFileName.json', data);
 			#else
 			_file = new FileReference();
-			_file.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
+			_file.addEventListener(Event.COMPLETE, onSaveComplete);
 			_file.addEventListener(Event.CANCEL, onSaveCancel);
 			_file.addEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 			_file.save(data, weekFileName + ".json");
@@ -539,7 +544,7 @@ class WeekEditorState extends MusicBeatState
 	
 	private static function onSaveComplete(_):Void
 	{
-		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
+		_file.removeEventListener(Event.COMPLETE, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
@@ -551,7 +556,7 @@ class WeekEditorState extends MusicBeatState
 		*/
 		private static function onSaveCancel(_):Void
 	{
-		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
+		_file.removeEventListener(Event.COMPLETE, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
@@ -562,7 +567,7 @@ class WeekEditorState extends MusicBeatState
 		*/
 	private static function onSaveError(_):Void
 	{
-		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
+		_file.removeEventListener(Event.COMPLETE, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
@@ -650,7 +655,7 @@ class WeekEditorFreeplayState extends MusicBeatState
 		add(loadWeekButton);
 		
 		var storyModeButton:FlxButton = new FlxButton(0, 685, "Story Mode", function() {
-			MusicBeatState.switchState(new WeekEditorState(weekFile));
+			FlxG.switchState(() -> new WeekEditorState(weekFile));
 			
 		});
 		storyModeButton.screenCenter(X);
@@ -785,7 +790,7 @@ class WeekEditorFreeplayState extends MusicBeatState
 			super.update(elapsed);
 			FlxTransitionableState.skipNextTransIn = true;
 			FlxTransitionableState.skipNextTransOut = true;
-			MusicBeatState.switchState(new WeekEditorFreeplayState(WeekEditorState.loadedWeek));
+			FlxG.switchState(() -> new WeekEditorFreeplayState(WeekEditorState.loadedWeek));
 			WeekEditorState.loadedWeek = null;
 			return;
 		}
@@ -798,8 +803,8 @@ class WeekEditorFreeplayState extends MusicBeatState
 		} else {
 			ClientPrefs.toggleVolumeKeys(true);
 			if(FlxG.keys.justPressed.ESCAPE || touchPad.buttonB.justPressed) {
-				MusicBeatState.switchState(new MasterEditorMenu());
-				FlxG.sound.playMusic(Paths.music('freakyMenu'));
+				FlxG.switchState(() -> new MasterEditorMenu());
+				states.TitleState.playFreakyMusic();
 			}
 
 			if(controls.UI_UP_P) changeSelection(-1);
