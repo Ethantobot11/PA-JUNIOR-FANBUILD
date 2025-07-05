@@ -9,7 +9,7 @@ import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.graphics.frames.FlxFrame;
 import flixel.group.FlxGroup;
 import flixel.input.gamepad.FlxGamepad;
-import haxe.Json;
+import tjson.TJSON as Json;
 
 import openfl.Assets;
 import openfl.display.Bitmap;
@@ -18,11 +18,16 @@ import openfl.display.BitmapData;
 import shaders.ColorSwap;
 
 import states.StoryMenuState;
-import states.OutdatedState;
 import states.MainMenuState;
+
+#if MODS_ALLOWED
+import backend.io.PsychFileSystem as FileSystem;
+import backend.io.PsychFile as File;
+#end
 
 typedef TitleData =
 {
+
 	titlex:Float,
 	titley:Float,
 	startx:Float,
@@ -30,7 +35,7 @@ typedef TitleData =
 	gfx:Float,
 	gfy:Float,
 	backgroundSprite:String,
-	bpm:Float
+	bpm:Int
 }
 
 class TitleState extends MusicBeatState
@@ -62,61 +67,84 @@ class TitleState extends MusicBeatState
 	var easterEggKeysBuffer:String = '';
 	#end
 
-	var mustUpdate:Bool = false;
+	public static var mustUpdate:Bool = false;
+	public static var inDev:Bool = false;
+	//public static var offlineMode:Bool = false;
 
 	var titleJSON:TitleData;
-
-	public static var updateVersion:String = '';
 
 	override public function create():Void
 	{
 		Paths.clearStoredMemory();
-
-		#if LUA_ALLOWED
-		Mods.pushGlobalMods();
-		#end
-		Mods.loadTopMod();
-
-		FlxG.fixedTimestep = false;
-		FlxG.game.focusLostFramerate = 60;
-		FlxG.keys.preventDefaultKeys = [TAB];
+		Paths.clearUnusedMemory();
 
 		curWacky = FlxG.random.getObject(getIntroTextShit());
 
 		super.create();
 
 		FlxG.save.bind('funkin', CoolUtil.getSavePath());
+		online.network.Auth.load();
 
 		ClientPrefs.loadPrefs();
+
+		backend.NoteSkinData.reloadNoteSkins();
 
 		#if CHECK_FOR_UPDATES
 		if(ClientPrefs.data.checkForUpdates && !closedState) {
 			trace('checking for update');
-			var http = new haxe.Http("https://raw.githubusercontent.com/MobilePorting/FNF-PsychEngine-Mobile/main/gitVersion.txt");
+			//should've done that earlier
+			var response = new online.http.HTTPClient("https://api.github.com/repos/Snirozu/Funkin-Psych-Online/releases/latest").request();
 
-			http.onData = function (data:String)
-			{
-				updateVersion = data.split('\n')[0].trim();
-				var curVersion:String = MainMenuState.psychEngineVersion.trim();
-				trace('version online: ' + updateVersion + ', your version: ' + curVersion);
-				if(updateVersion != curVersion) {
-					trace('versions arent matching!');
-					mustUpdate = true;
+			if (!response.isFailed()) {
+				var raw = response.getString();
+				Main.latestRelease = Json.parse(raw);
+				Main.updateVersion = Main.latestRelease.tag_name;
+				var curVersion:String = Main.PSYCH_ONLINE_VERSION.trim();
+				trace('version online: ' + Main.updateVersion + ', your version: ' + curVersion);
+
+				var updatVer:Array<Int> = Main.updateVersion.split('.').map(s -> {
+					return Std.parseInt(s);
+				});
+				var curVer:Array<Int> = curVersion.split('.').map(s -> {
+					return Std.parseInt(s);
+				});
+
+				trace('comparing ' + updatVer + ' > ' + curVer);
+				for (i => num in updatVer) {
+					if (num > curVer[i] ?? 0) {
+						switch (i) {
+							case 0:
+								Main.wankyUpdate = 'PSYCH ENGINE 1.0.0 WHAT';
+							case 1:
+								Main.wankyUpdate = 'major release';
+							default:
+								Main.wankyUpdate = 'minor patch';
+						}
+						mustUpdate = true;
+						trace('update version is newer! [' + i + "]");
+						break;
+					}
+					if (num < curVer[i] ?? 0) {
+						inDev = true;
+						trace('running on indev build! [' + i + "]");
+						lime.app.Application.current.window.title = lime.app.Application.current.window.title + ' [DEV]';
+						break;
+					}
+					if (i == updatVer.length - 1) {
+						trace('running on latest version!');
+					}
 				}
 			}
-
-			http.onError = function (error) {
-				trace('error: $error');
+			else {
+				trace(response.getError());
 			}
-
-			http.request();
 		}
 		#end
 
 		Highscore.load();
 
 		// IGNORE THIS!!!
-		titleJSON = tjson.TJSON.parse(Paths.getTextFromFile('images/gfDanceTitle.json'));
+		titleJSON = Json.parse(Paths.getTextFromFile('images/gfDanceTitle.json'));
 
 		#if TITLE_SCREEN_EASTER_EGG
 		if (FlxG.save.data.psychDevsEasterEgg == null) FlxG.save.data.psychDevsEasterEgg = ''; //Crash prevention
@@ -152,16 +180,22 @@ class TitleState extends MusicBeatState
 		}
 
 		FlxG.mouse.visible = false;
+
+		if (online.GameClient.isConnected()) {
+			FlxG.switchState(() -> new online.states.RoomState());
+			return;
+		}
+		
 		#if FREEPLAY
-		MusicBeatState.switchState(new FreeplayState());
+		FlxG.switchState(() -> new FreeplayState());
 		#elseif CHARTING
-		MusicBeatState.switchState(new ChartingState());
+		FlxG.switchState(() -> new ChartingState());
 		#else
 		if(FlxG.save.data.flashing == null && !FlashingState.leftState) {
-			controls.isInSubstate = false; //idfk what's wrong
+			controls.isInSubstate = false;
 			FlxTransitionableState.skipNextTransIn = true;
 			FlxTransitionableState.skipNextTransOut = true;
-			MusicBeatState.switchState(new FlashingState());
+			FlxG.switchState(() -> new FlashingState());
 		} else {
 			if (initialized)
 				startIntro();
@@ -187,7 +221,7 @@ class TitleState extends MusicBeatState
 		if (!initialized)
 		{
 			if(FlxG.sound.music == null) {
-				FlxG.sound.playMusic(Paths.music('freakyMenu'), 0);
+				states.TitleState.playFreakyMusic(0);
 			}
 		}
 
@@ -197,7 +231,7 @@ class TitleState extends MusicBeatState
 		var bg:FlxSprite = new FlxSprite();
 		bg.antialiasing = ClientPrefs.data.antialiasing;
 
-		if (titleJSON.backgroundSprite != null && titleJSON.backgroundSprite.length > 0 && titleJSON.backgroundSprite != "none"){
+		if (titleJSON.backgroundSprite != null && titleJSON.backgroundSprite.length > 0 && titleJSON.backgroundSprite != ""){
 			bg.loadGraphic(Paths.image(titleJSON.backgroundSprite));
 		}else{
 			bg.makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
@@ -315,19 +349,20 @@ class TitleState extends MusicBeatState
 		ngSpr.screenCenter(X);
 		ngSpr.antialiasing = ClientPrefs.data.antialiasing;
 
+		FlxTween.tween(credTextShit, {y: credTextShit.y + 20}, 2.9, {ease: FlxEase.quadInOut, type: PINGPONG});
+
 		if (initialized)
 			skipIntro();
 		else
 			initialized = true;
 
-		Paths.clearUnusedMemory();
 		// credGroup.add(credTextShit);
 	}
 
 	function getIntroTextShit():Array<Array<String>>
 	{
 		#if MODS_ALLOWED
-		var firstArray:Array<String> = Mods.mergeAllTextsNamed('data/introText.txt', Paths.getSharedPath());
+		var firstArray:Array<String> = Mods.mergeAllTextsNamed('data/introText.txt', Paths.getPreloadPath());
 		#else
 		var fullText:String = Assets.getText(Paths.txt('introText'));
 		var firstArray:Array<String> = fullText.split('\n');
@@ -350,6 +385,22 @@ class TitleState extends MusicBeatState
 
 	override function update(elapsed:Float)
 	{
+		if (FlxG.keys.justPressed.P) {
+			online.gui.Alert.alert(
+				'A Very Long Title So I Can Test How Much Can It Fit On The Screen Oh Yeaaaah!!!1!', //44
+				'Do you believe in god? Because I think that this is a complicated question, it depends on which mean by god. ' + //233
+				'You see I believe, that we are here, implies to some degree, that there are forces larger than us, now, we can get into this menticality... ' +
+				'The very notion of belief itself can be rhetorically whittled to the bare knob of Its meaning.'
+			);
+		}
+
+		#if lumod
+		if (FlxG.keys.justPressed.DELETE) {
+			lumod.Lumod.cache.scripts.clear();
+			trace("cleared lumod cache");
+		}
+		#end
+
 		if (FlxG.sound.music != null)
 			Conductor.songPosition = FlxG.sound.music.time;
 		// FlxG.watch.addQuick('amp', FlxG.sound.music.amplitude);
@@ -413,13 +464,17 @@ class TitleState extends MusicBeatState
 				transitioning = true;
 				// FlxG.sound.music.stop();
 
-				new FlxTimer().start(1, function(tmr:FlxTimer)
+				new FlxTimer().start(0.5, function(tmr:FlxTimer)
 				{
-					if (mustUpdate) {
-						MusicBeatState.switchState(new OutdatedState());
-					} else {
-						MusicBeatState.switchState(new MainMenuState());
-					}
+					#if DEBUG_RESULTS
+					FlxG.switchState(() -> new online.states.ResultsScreen());
+					#else
+					// if (mustUpdate) {
+					// 	FlxG.switchState(() -> new OutdatedState());
+					// } else {
+						FlxG.switchState(() -> new MainMenuState());
+					//}
+					#end
 					closedState = true;
 				});
 				// FlxG.sound.play(Paths.music('titleShoot'), 0.7);
@@ -456,13 +511,13 @@ class TitleState extends MusicBeatState
 								function(twn:FlxTween) {
 									FlxTransitionableState.skipNextTransIn = true;
 									FlxTransitionableState.skipNextTransOut = true;
-									MusicBeatState.switchState(new TitleState());
+									FlxG.switchState(() -> new TitleState());
 								}
 							});
 							FlxG.sound.music.fadeOut();
-							if(FreeplayState.vocals != null)
-							{
-								FreeplayState.vocals.fadeOut();
+							for (v in [FreeplayState.vocals, FreeplayState.opponentVocals]) {
+								if (v == null) continue;
+								v.fadeOut();
 							}
 							closedState = true;
 							transitioning = true;
@@ -481,11 +536,35 @@ class TitleState extends MusicBeatState
 			skipIntro();
 		}
 
+		if (controls.RESET) {
+			FlxG.sound.music.stop();
+			playFreakyMusic();
+		}
+
 		if(swagShader != null)
 		{
 			if(controls.UI_LEFT) swagShader.hue -= elapsed * 0.1;
 			if(controls.UI_RIGHT) swagShader.hue += elapsed * 0.1;
 		}
+
+		#if RESULTS_TEST
+		if (FlxG.keys.justPressed.F1) {
+			FlxG.switchState(() -> new online.states.ResultsSoloState({
+				hitNotes: FlxG.random.int(5, 2000),
+				combo: FlxG.random.int(5, 2000),
+				sicks: FlxG.random.int(5, 1000),
+				goods: FlxG.random.int(0, 500),
+				bads: FlxG.random.int(0, 250),
+				shits: FlxG.random.int(0, 100),
+				misses: FlxG.random.int(0, 50),
+				score: FlxG.random.int(5, 999999999),
+				accuracy: 1, //FlxG.random.float(0, 1),
+				character: (ClientPrefs.data.modSkin ?? [])[1],
+				difficultyName: 'nightmare',
+				points: FlxG.random.int(0, 100)
+			}));
+		}
+		#end
 
 		super.update(elapsed);
 	}
@@ -547,23 +626,28 @@ class TitleState extends MusicBeatState
 			{
 				case 1:
 					//FlxG.sound.music.stop();
-					FlxG.sound.playMusic(Paths.music('freakyMenu'), 0);
+					states.TitleState.playFreakyMusic(0);
 					FlxG.sound.music.fadeIn(4, 0, 0.7);
 				case 2:
 					#if PSYCH_WATERMARKS
-					createCoolText(['Psych Engine by'], 40);
+					createCoolText(['Psych Online by'], 40);
 					#else
 					createCoolText(['ninjamuffin99', 'phantomArcade', 'kawaisprite', 'evilsk8er']);
 					#end
+				// credTextShit.visible = true;
 				case 4:
 					#if PSYCH_WATERMARKS
-					addMoreText('Shadow Mario', 40);
-					addMoreText('Riveren', 40);
+					addMoreText('Snirozu', 40); // yall stop crediting porters for psych online
 					#else
 					addMoreText('present');
 					#end
+				// credTextShit.text += '\npresent...';
+				// credTextShit.addText();
 				case 5:
 					deleteCoolText();
+				// credTextShit.visible = false;
+				// credTextShit.text = 'In association \nwith';
+				// credTextShit.screenCenter();
 				case 6:
 					#if PSYCH_WATERMARKS
 					createCoolText(['Not associated', 'with'], -40);
@@ -573,19 +657,31 @@ class TitleState extends MusicBeatState
 				case 8:
 					addMoreText('newgrounds', -40);
 					ngSpr.visible = true;
+				// credTextShit.text += '\nNewgrounds';
 				case 9:
 					deleteCoolText();
 					ngSpr.visible = false;
+				// credTextShit.visible = false;
+
+				// credTextShit.text = 'Shoutouts Tom Fulp';
+				// credTextShit.screenCenter();
 				case 10:
 					createCoolText([curWacky[0]]);
+				// credTextShit.visible = true;
 				case 12:
 					addMoreText(curWacky[1]);
+				// credTextShit.text += '\nlmao';
 				case 13:
 					deleteCoolText();
+				// credTextShit.visible = false;
+				// credTextShit.text = "Friday";
+				// credTextShit.screenCenter();
 				case 14:
 					addMoreText('Friday');
+				// credTextShit.visible = true;
 				case 15:
 					addMoreText('Night');
+				// credTextShit.text += '\nNight';
 				case 16:
 					addMoreText('Funkin'); // credTextShit.text += '\nFunkin';
 
@@ -624,7 +720,7 @@ class TitleState extends MusicBeatState
 						skippedIntro = true;
 						playJingle = false;
 
-						FlxG.sound.playMusic(Paths.music('freakyMenu'), 0);
+						states.TitleState.playFreakyMusic(0);
 						FlxG.sound.music.fadeIn(4, 0, 0.7);
 						return;
 				}
@@ -646,7 +742,7 @@ class TitleState extends MusicBeatState
 					remove(credGroup);
 					FlxG.camera.flash(FlxColor.WHITE, 3);
 					sound.onComplete = function() {
-						FlxG.sound.playMusic(Paths.music('freakyMenu'), 0);
+						states.TitleState.playFreakyMusic(0);
 						FlxG.sound.music.fadeIn(4, 0, 0.7);
 						transitioning = false;
 					};
@@ -666,9 +762,9 @@ class TitleState extends MusicBeatState
 				if(easteregg == 'SHADOW')
 				{
 					FlxG.sound.music.fadeOut();
-					if(FreeplayState.vocals != null)
-					{
-						FreeplayState.vocals.fadeOut();
+					for (v in [FreeplayState.vocals, FreeplayState.opponentVocals]) {
+						if (v == null) continue;
+						v.fadeOut();
 					}
 				}
 				#end
@@ -676,4 +772,76 @@ class TitleState extends MusicBeatState
 			skippedIntro = true;
 		}
 	}
+
+	static var lastFreakyMusic:openfl.media.Sound = null;
+	public static var lastSong:TrackSong = null;
+	public static function playFreakyMusic(?volume:Float = 0.7, ?daSong:TrackSong) {
+		if (FlxG.sound.music != null && FlxG.sound.music.playing && lastFreakyMusic == @:privateAccess FlxG.sound.music._sound)
+			return;
+
+		if (FlxG.sound.music != null)
+			FlxG.sound.music.stop();
+
+		if (daSong == null && ClientPrefs.data.favsAsMenuTheme && ClientPrefs.data.favSongs != null && ClientPrefs.data.favSongs.length > 0) {
+			var songs:Array<TrackSong> = [];
+	
+			WeekData.reloadWeekFiles(false);
+			for (i in 0...WeekData.weeksList.length) {
+				var leWeek:WeekData = WeekData.weeksLoaded.get(WeekData.weeksList[i]);
+				WeekData.setDirectoryFromWeek(leWeek);
+	
+				for (song in leWeek.songs) {
+					if (!ClientPrefs.data.favSongs.contains(song[0] + '-' + (Mods.currentModDirectory ?? ''))) {
+						continue;
+					}
+	
+					songs.push({
+						name: song[0].toLowerCase(),
+						week: leWeek
+					});
+				}
+			}
+	
+			if (songs.length > 0) {
+				daSong = songs[FlxG.random.int(0, songs.length - 1)];
+
+			}
+		}
+
+		if (daSong != null) {
+			try {
+				WeekData.setDirectoryFromWeek(daSong.week);
+				Difficulty.loadFromWeek(daSong.week);
+				var diffI = 0;
+				while (diffI < Difficulty.list.length) {
+					try {
+						var poop:String = Highscore.formatSong(daSong.name, diffI);
+						PlayState.loadSong(poop, daSong.name);
+						Conductor.bpm = PlayState.SONG.bpm;
+						Conductor.mapBPMChanges(PlayState.SONG);
+		
+						FlxG.sound.playMusic(Paths.inst(PlayState.SONG.song), volume);
+						lastFreakyMusic = @:privateAccess FlxG.sound.music._sound;
+						lastSong = daSong;
+						return;
+					}
+					catch (_) {}
+					diffI++;
+				}
+			}
+			catch (exc) {
+				trace(exc);
+			}
+		}
+
+		if (FlxG.sound.music == null || !FlxG.sound.music.playing) {
+			FlxG.sound.playMusic(Paths.music('freakyMenu'), volume);
+			lastFreakyMusic = @:privateAccess FlxG.sound.music._sound;
+		}
+	}
+}
+
+typedef TrackSong = {
+	name:String,
+	week:WeekData
 }
