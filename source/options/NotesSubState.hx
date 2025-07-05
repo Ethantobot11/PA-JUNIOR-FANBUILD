@@ -1,10 +1,12 @@
 package options;
 
+import online.GameClient;
 import flixel.addons.display.FlxBackdrop;
 import flixel.addons.display.FlxGridOverlay;
 import flixel.addons.display.shapes.FlxShapeCircle;
 import flixel.input.keyboard.FlxKey;
 import flixel.input.gamepad.FlxGamepadInputID;
+import flixel.math.FlxPoint;
 import lime.system.Clipboard;
 import flixel.util.FlxGradient;
 import objects.StrumNote;
@@ -15,6 +17,8 @@ import shaders.RGBPalette.RGBShaderReference;
 
 class NotesSubState extends MusicBeatSubstate
 {
+	public static var isOpened:Bool = false;
+
 	var onModeColumn:Bool = true;
 	var curSelectedMode:Int = 0;
 	var curSelectedNote:Int = 0;
@@ -48,13 +52,9 @@ class NotesSubState extends MusicBeatSubstate
 	var tipTxt:FlxText;
 
 	public function new() {
-                controls.isInSubstate = true;
-
 		super();
-		
-		#if DISCORD_ALLOWED
-		DiscordClient.changePresence("Note Colors Menu", null);
-		#end
+
+		isOpened = true;
 		
 		var bg:FlxSprite = new FlxSprite().loadGraphic(Paths.image('menuDesat'));
 		bg.color = 0xFFEA71FD;
@@ -91,19 +91,7 @@ class NotesSubState extends MusicBeatSubstate
 		bg.alpha = 0.25;
 		add(bg);
 
-		var sigh:String;
-		var sighPosX:Int;
-
-		if (controls.mobileC)
-		{
-			sigh = "PRESS";
-			sighPosX = 44;
-		} else {
-			sigh = "CTRL";
-			sighPosX = 50;
-		}
-
-		var text:Alphabet = new Alphabet(sighPosX, 86, sigh, false);
+		var text:Alphabet = new Alphabet((controls.mobileC) ? 44 : 50, 86, (controls.mobileC) ? 'PRESS' : 'CTRL', false);
 		text.alignment = CENTERED;
 		text.setScale(0.4);
 		add(text);
@@ -162,12 +150,11 @@ class NotesSubState extends MusicBeatSubstate
 		var tipY = 660;
 		var tipText:String;
 
-		if (controls.mobileC)
-		{
+		if (controls.mobileC) {
 			tipText = "Press C to Reset the selected Note Part.";
 			tipY = 0;
 		} else
-			tipText = "Press RELOAD to Reset the selected Note Part.";
+			tipText = 'Press RELOAD to Reset the selected Note Part.';
 
 		var tip:FlxText = new FlxText(tipX, tipY, 0, tipText, 16);
 		tip.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
@@ -190,8 +177,9 @@ class NotesSubState extends MusicBeatSubstate
 		controllerPointer.visible = controls.controllerMode;
 		_lastControllerMode = controls.controllerMode;
 
-		addTouchPad("NONE", "B_C");
- 		touchPad.buttonB.x = FlxG.width - 132;
+		addTouchPad('NONE', 'B_C');
+		controls.isInSubstate = true;
+		touchPad.buttonB.x = FlxG.width - 132;
 		touchPad.buttonC.x = 0;
 		touchPad.buttonC.y = FlxG.height - 135;
 	}
@@ -199,7 +187,7 @@ class NotesSubState extends MusicBeatSubstate
 	function updateTip()
 	{
 		if (!controls.mobileC)
-			tipTxt.text = 'Hold ' + (!controls.controllerMode ? 'Shift' : 'Left Shoulder Button') + ' + Press RESET key to fully reset the selected Note.';
+			tipTxt.text = 'Hold ' + (!controls.controllerMode ? 'Shift' : 'Left Shoulder Button') + ' + Press RELOAD to fully reset the selected Note.';
 	}
 
 	var _storedColor:FlxColor;
@@ -212,10 +200,12 @@ class NotesSubState extends MusicBeatSubstate
 
 	override function update(elapsed:Float) {
 		if (controls.BACK) {
+			if (GameClient.isConnected()) {
+				GameClient.send('updateArrColors', [ClientPrefs.data.arrowRGB, ClientPrefs.data.arrowRGBPixel]);
+			}
 			FlxG.mouse.visible = false;
 			FlxG.sound.play(Paths.sound('cancelMenu'));
-			ClientPrefs.saveSettings();
-                        controls.isInSubstate = false;
+			isOpened = controls.isInSubstate = false;
 			close();
 			return;
 		}
@@ -449,7 +439,6 @@ class NotesSubState extends MusicBeatSubstate
 			else if(pointerY() >= hexTypeLine.y && pointerY() < hexTypeLine.y + hexTypeLine.height &&
 					Math.abs(pointerX() - 1000) <= 84)
 			{
-				FlxG.stage.window.textInputEnabled = true;
 				hexTypeNum = 0;
 				for (letter in alphabetHex.letters)
 				{
@@ -522,6 +511,12 @@ class NotesSubState extends MusicBeatSubstate
 			FlxG.sound.play(Paths.sound('cancelMenu'), 0.6);
 			updateColors();
 		}
+	}
+
+	override function destroy() {
+		super.destroy();
+
+		isOpened = false;
 	}
 
 	function pointerOverlaps(obj:Dynamic)
@@ -661,7 +656,7 @@ class NotesSubState extends MusicBeatSubstate
 		Note.globalRgbShaders = [];
 		for (i in 0...dataArray.length)
 		{
-			Note.initializeGlobalRGBShader(i);
+			Note.initializeGlobalRGBShader(i, true);
 			var newNote:StrumNote = new StrumNote(150 + (480 / dataArray.length * i), 200, i, 0);
 			newNote.useRGBShader = true;
 			newNote.setGraphicSize(102);
