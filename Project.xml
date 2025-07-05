@@ -2,7 +2,7 @@
 <project>
 	<!-- _________________________ Application Settings _________________________ -->
 
-	<app title="FNF: PE 7.3" file="PsychEngine" packageName="com.shadowmario.psychengine073" package="com.shadowmario.psychengine073" main="Main" version="0.2.8" company="ShadowMario" />
+	<app title="FNF: PE 7.3" file="PsychEngine" packageName="com.juniorfanbuild.pibbyapocalypse" package="com.juniorfanbuild.pibbyapocalypse" main="Main" version="0.2.8" company="ShadowMario" />
 
 	<!--Switch Export with Unique ApplicationID and Icon-->
 	<set name="APP_ID" value="0x0100f6c013bbc000" />
@@ -99,7 +99,7 @@
 	<haxelib name="hxdiscord_rpc" if="DISCORD_ALLOWED"/>
 	<haxelib name="flxanimate"/>
 	<!-- Mobile Specific-->
-	<haxelib name="extension-androidtools" if="android" />
+	<!-- <haxelib name="extension-androidtools" if="android" /> --!>
 
 	<!-- Disable Discord IO Thread -->
 	<haxedef name="DISCORD_DISABLE_IO_THREAD" if="hxdiscord_rpc" />
