@@ -4,15 +4,18 @@ import flixel.addons.ui.FlxUI;
 import flixel.addons.ui.FlxUICheckBox;
 import flixel.addons.ui.FlxUIInputText;
 import flixel.addons.ui.FlxUINumericStepper;
-import flixel.addons.ui.FlxUIDropDownMenu;
+import objects.FlxScrollableDropDownMenu;
 import flixel.addons.ui.FlxUITabMenu;
 import flixel.ui.FlxButton;
 import openfl.net.FileReference;
 import openfl.events.Event;
 import openfl.events.IOErrorEvent;
-import flash.net.FileFilter;
-import haxe.Json;
+import openfl.net.FileFilter;
+import tjson.TJSON as Json;
 import lime.system.Clipboard;
+#if sys
+import backend.io.PsychFile as File;
+#end
 
 import objects.TypedAlphabet;
 
@@ -46,11 +49,14 @@ class DialogueCharacterEditorState extends MusicBeatState
 
 	override function create() {
 		persistentUpdate = persistentDraw = true;
-		camGame = initPsychCamera();
-		camGame.bgColor = FlxColor.fromHSL(0, 0, 0.5);
+		camGame = new FlxCamera();
 		camHUD = new FlxCamera();
+		camGame.bgColor = FlxColor.fromHSL(0, 0, 0.5);
 		camHUD.bgColor.alpha = 0;
+
+		FlxG.cameras.reset(camGame);
 		FlxG.cameras.add(camHUD, false);
+		FlxG.cameras.setDefaultDrawTarget(camGame, true);
 		
 		mainGroup = new FlxSpriteGroup();
 		mainGroup.cameras = [camGame];
@@ -90,34 +96,35 @@ class DialogueCharacterEditorState extends MusicBeatState
 		box.updateHitbox();
 		hudGroup.add(box);
 
-		if (controls.mobileC)
-		{
-			TIP_TEXT_MAIN = '\nX - Reset Camera
-			\nY - Toggle Speech Bubble
-			\nA - Reset text';
-
-			TIP_TEXT_OFFSET = '\nX - Reset Camera
-			\nY - Toggle Ghosts
-			\nTop Arrow Keys - Move Looping animation offset (Red)
-			\nBottom Arrow Keys - Move Idle/Finished animation offset (Blue)
-			\nHold Z to move offsets 10x faster';
-		}
-		else
-		{
-			TIP_TEXT_MAIN = 'JKLI - Move camera (Hold Shift to move 4x faster)
-			\nQ/E - Zoom out/in
-			\nR - Reset Camera
-			\nH - Toggle Speech Bubble
-			\nSpace - Reset text';
-
-			TIP_TEXT_OFFSET = 'JKLI - Move camera (Hold Shift to move 4x faster)
-			\nQ/E - Zoom out/in
-			\nR - Reset Camera
-			\nH - Toggle Ghosts
-			\nWASD - Move Looping animation offset (Red)
-			\nArrow Keys - Move Idle/Finished animation offset (Blue)
-			\nHold Shift to move offsets 10x faster';
-		}
+		if (controls.mobileC) {
+		TIP_TEXT_MAIN =
+	'\nX - Reset Camera
+	\nY - Toggle Speech Bubble
+	\nA - Reset text';
+	
+	     TIP_TEXT_OFFSET =
+	'\nX - Reset Camera
+	\nY - Toggle Ghosts
+	\nTop Arrow Buttons - Move Looping animation offset (Red)
+	\nBottom Arrow Buttons - Move Idle/Finished animation offset (Blue)
+	\nHold Z to move offsets 10x faster';
+	} else {
+	    TIP_TEXT_MAIN =
+	'JKLI - Move camera (Hold Shift to move 4x faster)
+	\nQ/E - Zoom out/in
+	\nR - Reset Camera
+	\nH - Toggle Speech Bubble
+	\nSpace - Reset text';
+	
+	     TIP_TEXT_OFFSET =
+	'JKLI - Move camera (Hold Shift to move 4x faster)
+	\nQ/E - Zoom out/in
+	\nR - Reset Camera
+	\nH - Toggle Ghosts
+	\nWASD - Move Looping animation offset (Red)
+	\nArrow Keys - Move Idle/Finished animation offset (Blue)
+	\nHold Shift to move offsets 10x faster';
+	     }
 
 		tipText = new FlxText(10, 10, FlxG.width - 20, TIP_TEXT_MAIN, 8);
 		tipText.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, RIGHT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
@@ -231,7 +238,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 
 	var curSelectedAnim:String;
 	var animationArray:Array<String> = [];
-	var animationDropDown:FlxUIDropDownMenu;
+	var animationDropDown:FlxScrollableDropDownMenu;
 	var animationInputText:FlxUIInputText;
 	var loopInputText:FlxUIInputText;
 	var idleInputText:FlxUIInputText;
@@ -239,7 +246,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 		var tab_group = new FlxUI(null, UI_mainbox);
 		tab_group.name = "Animations";
 
-		animationDropDown = new FlxUIDropDownMenu(10, 30, FlxUIDropDownMenu.makeStrIdLabelArray([''], true), function(animation:String) {
+		animationDropDown = new FlxScrollableDropDownMenu(10, 30, FlxScrollableDropDownMenu.makeStrIdLabelArray([''], true), function(animation:String) {
 			var anim:String = animationArray[Std.parseInt(animation)];
 			if(character.dialogueAnimations.exists(anim)) {
 				ghostLoop.playAnim(anim);
@@ -349,7 +356,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 		}
 
 		if(animationArray.length < 1) animationArray = [''];
-		animationDropDown.setData(FlxUIDropDownMenu.makeStrIdLabelArray(animationArray, true));
+		animationDropDown.setData(FlxScrollableDropDownMenu.makeStrIdLabelArray(animationArray, true));
 	}
 
 	var imageInputText:FlxUIInputText;
@@ -494,6 +501,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 	var lastTab:String = 'Character';
 	var transitioning:Bool = false;
 	override function update(elapsed:Float) {
+		MusicBeatState.camBeat = FlxG.camera;
 		if(transitioning) {
 			super.update(elapsed);
 			return;
@@ -666,8 +674,8 @@ class DialogueCharacterEditorState extends MusicBeatState
 			}
 
 			if(FlxG.keys.justPressed.ESCAPE #if android || FlxG.android.justPressed.BACK #end || touchPad.buttonB.justPressed) {
-				MusicBeatState.switchState(new states.editors.MasterEditorMenu());
-				FlxG.sound.playMusic(Paths.music('freakyMenu'), 1);
+				FlxG.switchState(() -> new states.editors.MasterEditorMenu());
+				states.TitleState.playFreakyMusic();
 				transitioning = true;
 			}
 
@@ -683,7 +691,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 	function loadCharacter() {
 		var jsonFilter:FileFilter = new FileFilter('JSON', 'json');
 		_file = new FileReference();
-		_file.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
+		_file.addEventListener(Event.SELECT, onLoadComplete);
 		_file.addEventListener(Event.CANCEL, onLoadCancel);
 		_file.addEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file.browse([jsonFilter]);
@@ -691,7 +699,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 
 	function onLoadComplete(_):Void
 	{
-		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
+		_file.removeEventListener(Event.SELECT, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 
@@ -734,7 +742,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 		*/
 	function onLoadCancel(_):Void
 	{
-		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
+		_file.removeEventListener(Event.SELECT, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file = null;
@@ -746,7 +754,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 		*/
 	function onLoadError(_):Void
 	{
-		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
+		_file.removeEventListener(Event.SELECT, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file = null;
@@ -764,7 +772,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 			StorageUtil.saveContent('$characterName.json', data);
 			#else
 			_file = new FileReference();
-			_file.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
+			_file.addEventListener(Event.COMPLETE, onSaveComplete);
 			_file.addEventListener(Event.CANCEL, onSaveCancel);
 			_file.addEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 			_file.save(data, characterName + ".json");
@@ -774,7 +782,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 
 	function onSaveComplete(_):Void
 	{
-		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
+		_file.removeEventListener(Event.COMPLETE, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
@@ -786,7 +794,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 		*/
 	function onSaveCancel(_):Void
 	{
-		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
+		_file.removeEventListener(Event.COMPLETE, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
@@ -797,7 +805,7 @@ class DialogueCharacterEditorState extends MusicBeatState
 		*/
 	function onSaveError(_):Void
 	{
-		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
+		_file.removeEventListener(Event.COMPLETE, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
