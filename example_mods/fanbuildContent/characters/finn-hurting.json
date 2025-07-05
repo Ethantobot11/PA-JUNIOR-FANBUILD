@@ -1,0 +1,80 @@
+{
+	"animations": [
+		{
+			"loop": true,
+			"offsets": [
+				144,
+				91
+			],
+			"anim": "idle",
+			"fps": 24,
+			"name": "Idle",
+			"indices": []
+		},
+		{
+			"loop": false,
+			"offsets": [
+				426,
+				192
+			],
+			"anim": "singLEFT",
+			"fps": 24,
+			"name": "Hurt1",
+			"indices": []
+		},
+		{
+			"loop": false,
+			"offsets": [
+				427,
+				192
+			],
+			"anim": "singUP",
+			"fps": 24,
+			"name": "Hurt1",
+			"indices": []
+		},
+		{
+			"loop": false,
+			"offsets": [
+				428,
+				253
+			],
+			"anim": "singDOWN",
+			"fps": 24,
+			"name": "Hurt2",
+			"indices": []
+		},
+		{
+			"loop": false,
+			"offsets": [
+				427,
+				252
+			],
+			"anim": "singRIGHT",
+			"fps": 24,
+			"name": "Hurt2",
+			"indices": []
+		}
+	],
+	"vocals_file": "",
+	"no_antialiasing": false,
+	"image": "characters/Finn-hurting",
+	"position": [
+		-100,
+		80
+	],
+	"healthicon": "finn",
+	"flip_x": false,
+	"healthbar_colors": [
+		255,
+		255,
+		255
+	],
+	"camera_position": [
+		0,
+		0
+	],
+	"sing_duration": 6.1,
+	"scale": 0.9,
+	"_editor_isPlayer": false
+}
