@@ -20,12 +20,6 @@ typedef LuaTweenOptions = {
 
 class LuaUtils
 {
-	public static final Function_Stop:Dynamic = "##PSYCHLUA_FUNCTIONSTOP";
-	public static final Function_Continue:Dynamic = "##PSYCHLUA_FUNCTIONCONTINUE";
-	public static final Function_StopLua:Dynamic = "##PSYCHLUA_FUNCTIONSTOPLUA";
-	public static final Function_StopHScript:Dynamic = "##PSYCHLUA_FUNCTIONSTOPHSCRIPT";
-	public static final Function_StopAll:Dynamic = "##PSYCHLUA_FUNCTIONSTOPALL";
-
 	public static function getLuaTween(options:Dynamic)
 	{
 		return {
@@ -115,74 +109,6 @@ class LuaUtils
 				return retVal;
 		}
 		return Reflect.getProperty(instance, variable);
-	}
-
-	public static function getModSetting(saveTag:String, ?modName:String = null)
-	{
-		#if MODS_ALLOWED
-		if(FlxG.save.data.modSettings == null) FlxG.save.data.modSettings = new Map<String, Dynamic>();
-
-		var settings:Map<String, Dynamic> = FlxG.save.data.modSettings.get(modName);
-		var path:String = Paths.mods('$modName/data/settings.json');
-		if(FileSystem.exists(path))
-		{
-			if(settings == null || !settings.exists(saveTag))
-			{
-				if(settings == null) settings = new Map<String, Dynamic>();
-				var data:String = File.getContent(path);
-				try
-				{
-					//FunkinLua.luaTrace('getModSetting: Trying to find default value for "$saveTag" in Mod: "$modName"');
-					var parsedJson:Dynamic = tjson.TJSON.parse(data);
-					for (i in 0...parsedJson.length)
-					{
-						var sub:Dynamic = parsedJson[i];
-						if(sub != null && sub.save != null && !settings.exists(sub.save))
-						{
-							if(sub.type != 'keybind' && sub.type != 'key')
-							{
-								if(sub.value != null)
-								{
-									//FunkinLua.luaTrace('getModSetting: Found unsaved value "${sub.save}" in Mod: "$modName"');
-									settings.set(sub.save, sub.value);
-								}
-							}
-							else
-							{
-								//FunkinLua.luaTrace('getModSetting: Found unsaved keybind "${sub.save}" in Mod: "$modName"');
-								settings.set(sub.save, {keyboard: (sub.keyboard != null ? sub.keyboard : 'NONE'), gamepad: (sub.gamepad != null ? sub.gamepad : 'NONE')});
-							}
-						}
-					}
-					FlxG.save.data.modSettings.set(modName, settings);
-				}
-				catch(e:Dynamic)
-				{
-					var errorTitle = 'Mod name: ' + Mods.currentModDirectory;
-					var errorMsg = 'An error occurred: $e';
-					CoolUtil.showPopUp(errorMsg, errorTitle);
-				}
-			}
-		}
-		else
-		{
-			FlxG.save.data.modSettings.remove(modName);
-			#if (LUA_ALLOWED || HSCRIPT_ALLOWED)
-			PlayState.instance.addTextToDebug('getModSetting: $path could not be found!', FlxColor.RED);
-			#else
-			FlxG.log.warn('getModSetting: $path could not be found!');
-			#end
-			return null;
-		}
-
-		if(settings.exists(saveTag)) return settings.get(saveTag);
-		#if (LUA_ALLOWED || HSCRIPT_ALLOWED)
-		PlayState.instance.addTextToDebug('getModSetting: "$saveTag" could not be found inside $modName\'s settings!', FlxColor.RED);
-		#else
-		FlxG.log.warn('getModSetting: "$saveTag" could not be found inside $modName\'s settings!');
-		#end
-		#end
-		return null;
 	}
 	
 	public static function isMap(variable:Dynamic)
@@ -297,9 +223,8 @@ class LuaUtils
 		var obj:Dynamic = LuaUtils.getObjectDirectly(obj, false);
 		if(obj != null && obj.animation != null)
 		{
-			if(indices == null)
-				indices = [0];
-			else if(Std.isOfType(indices, String))
+			if(indices == null) indices = [];
+			if(Std.isOfType(indices, String))
 			{
 				var strIndices:Array<String> = cast (indices, String).trim().split(',');
 				var myIndices:Array<Int> = [];
@@ -324,12 +249,6 @@ class LuaUtils
 	{
 		switch(spriteType.toLowerCase().trim())
 		{
-			//case "texture" | "textureatlas" | "tex":
-				//spr.frames = AtlasFrameMaker.construct(image);
-
-			//case "texture_noaa" | "textureatlas_noaa" | "tex_noaa":
-				//spr.frames = AtlasFrameMaker.construct(image, null, true);
-
 			case "packer" | "packeratlas" | "pac":
 				spr.frames = Paths.getPackerAtlas(image);
 
@@ -358,7 +277,7 @@ class LuaUtils
 			return;
 		}
 
-		var target:ModchartSprite = PlayState.instance.modchartSprites.get(tag);
+		var target:FlxSprite = PlayState.instance.modchartSprites.get(tag);
 		target.kill();
 		PlayState.instance.remove(target, true);
 		target.destroy();
@@ -392,41 +311,6 @@ class LuaUtils
 			theTimer.destroy();
 			PlayState.instance.modchartTimers.remove(tag);
 		}
-		#end
-	}
-
-	public static function getBuildTarget():String
-	{
-		#if windows
-		return 'windows';
-		#elseif linux
-		return 'linux';
-		#elseif mac
-		return 'mac';
-		#elseif hl
-		return 'hashlink';
-		#elseif (html5 || emscripten || nodejs || winjs || electron)
-		return 'browser';
-		#elseif android
-		return 'android';
-		#elseif webos
-		return 'webos';
-		#elseif tvos
-		return 'tvos';
-		#elseif watchos
-		return 'watchos';
-		#elseif air
-		return 'air';
-		#elseif flash
-		return 'flash';
-		#elseif (ios || iphonesim)
-		return 'ios';
-		#elseif neko
-		return 'neko';
-		#elseif switch
-		return 'switch';
-		#else
-		return 'unknown';
 		#end
 	}
 
