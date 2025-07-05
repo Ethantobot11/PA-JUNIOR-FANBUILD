@@ -1,12 +1,16 @@
 package options;
 
+import states.FreeplayState;
+import backend.NoteSkinData;
+import online.GameClient;
 import objects.Note;
 import objects.StrumNote;
 import objects.Alphabet;
 
 class VisualsUISubState extends BaseOptionsMenu
 {
-	public static var pauseMusics:Array<String> = ['None', 'Breakfast', 'Tea Time'];
+	public static var isOpened:Bool = false;
+
 	var noteOptionID:Int = -1;
 	var notes:FlxTypedGroup<StrumNote>;
 	var notesTween:Array<FlxTween> = [];
@@ -15,6 +19,10 @@ class VisualsUISubState extends BaseOptionsMenu
 	{
 		title = 'Visuals and UI';
 		rpcTitle = 'Visuals & UI Settings Menu'; //for Discord Rich Presence
+
+		NoteSkinData.reloadNoteSkins();
+
+		isOpened = true;
 
 		// for note skins
 		notes = new FlxTypedGroup<StrumNote>();
@@ -29,24 +37,22 @@ class VisualsUISubState extends BaseOptionsMenu
 
 		// options
 
-		var noteSkins:Array<String> = Mods.mergeAllTextsNamed('images/noteSkins/list.txt');
-		if(noteSkins.length > 0)
+		if(NoteSkinData.noteSkins.length > 0)
 		{
-			if(!noteSkins.contains(ClientPrefs.data.noteSkin))
+			if(!NoteSkinData.noteSkinArray.contains(ClientPrefs.data.noteSkin))
 				ClientPrefs.data.noteSkin = ClientPrefs.defaultData.noteSkin; //Reset to default if saved noteskin couldnt be found
 
-			noteSkins.insert(0, ClientPrefs.defaultData.noteSkin); //Default skin always comes first
 			var option:Option = new Option('Note Skins:',
 				"Select your prefered Note skin.",
 				'noteSkin',
 				'string',
-				noteSkins);
+				NoteSkinData.noteSkinArray);
 			addOption(option);
 			option.onChange = onChangeNoteSkin;
 			noteOptionID = optionsArray.length - 1;
 		}
 		
-		var noteSplashes:Array<String> = Mods.mergeAllTextsNamed('images/noteSplashes/list.txt');
+		var noteSplashes:Array<String> = Mods.mergeAllTextsNamed('images/noteSplashes/list.txt', 'shared');
 		if(noteSplashes.length > 0)
 		{
 			if(!noteSplashes.contains(ClientPrefs.data.splashSkin))
@@ -62,11 +68,33 @@ class VisualsUISubState extends BaseOptionsMenu
 		}
 
 		var option:Option = new Option('Note Splash Opacity',
-			'How much transparent should the Note Splashes be.',
+			'How much transparent should the Note Splashes be.\n0% disables it.',
 			'splashAlpha',
 			'percent');
 		option.scrollSpeed = 1.6;
 		option.minValue = 0.0;
+		option.maxValue = 1;
+		option.changeValue = 0.1;
+		option.decimals = 1;
+		addOption(option);
+
+		var option:Option = new Option('Note Hold Splash Opacity',
+			'How much transparent should the Note Hold Splash be.\n0% disables it.',
+			'holdSplashAlpha',
+			'percent');
+		option.scrollSpeed = 1.6;
+		option.minValue = 0.0;
+		option.maxValue = 1;
+		option.changeValue = 0.1;
+		option.decimals = 1;
+		addOption(option);
+
+		var option:Option = new Option('Trail Note Opacity',
+			'How much transparent should the Note Trail be.',
+			'holdAlpha',
+			'percent');
+		option.scrollSpeed = 1.3;
+		option.minValue = 0.5;
 		option.maxValue = 1;
 		option.changeValue = 0.1;
 		option.decimals = 1;
@@ -113,7 +141,7 @@ class VisualsUISubState extends BaseOptionsMenu
 		option.changeValue = 0.1;
 		option.decimals = 1;
 		addOption(option);
-
+		
 		var option:Option = new Option('FPS Counter',
 			'If unchecked, hides FPS Counter.',
 			'showFPS',
@@ -121,7 +149,7 @@ class VisualsUISubState extends BaseOptionsMenu
 		addOption(option);
 		option.onChange = onChangeFPSCounter;
 
-		#if sys
+		#if native
 		var option:Option = new Option('VSync',
 			'If checked, Enables VSync fixing any screen tearing at the cost of capping the FPS to screen refresh rate.\n(Must restart the game to have an effect)',
 			'vsync',
@@ -129,12 +157,18 @@ class VisualsUISubState extends BaseOptionsMenu
 		option.onChange = onChangeVSync;
 		addOption(option);
 		#end
+
+		var option:Option = new Option('Disable Online Shaders',
+			'If checked, disables shaders that being used on online menus.',
+			'disableOnlineShaders',
+			'bool');
+		addOption(option);
 		
 		var option:Option = new Option('Pause Screen Song:',
 			"What song do you prefer for the Pause Screen?",
 			'pauseMusic',
 			'string',
-			pauseMusics);
+			['None', 'Breakfast', 'Tea Time']);
 		addOption(option);
 		option.onChange = onChangePauseMusic;
 		
@@ -154,9 +188,94 @@ class VisualsUISubState extends BaseOptionsMenu
 		addOption(option);
 		#end
 
-		var option:Option = new Option('Combo Stacking',
-			"If unchecked, Ratings and Combo won't stack, saving on System Memory and making them easier to read",
-			'comboStacking',
+		var option:Option = new Option('Debug Mode',
+			"If checked, enables debug warnings etc.",
+			'debugMode',
+			'bool');
+		addOption(option);
+
+		var option:Option = new Option('Show Note timing',
+			'If checked, a timing of the hitted note will be shown on the screen (in miliseconds)',
+			'showNoteTiming',
+			'bool');
+		addOption(option);
+
+		var option:Option = new Option('Disable Automatic Downloads',
+			'Disables automatic downloads of Mods and Skins from the opponent',
+			'disableAutoDownloads',
+			'bool');
+		addOption(option);
+
+		var option:Option = new Option('Disable Song Comments',
+			'Disables song comments on the replay viewer',
+			'disableSongComments',
+			'bool');
+		addOption(option);
+
+		var option:Option = new Option('Show Funkin Points Counter',
+			'If checked, the current FP count will be shown in the score text, can be toggled in-game with F7',
+			'showFP',
+			'bool');
+		addOption(option);
+
+		var option:Option = new Option('Group Songs:',
+			"How should songs on Freeplay menu be group by?",
+			'groupSongsBy',
+			'string',
+			FreeplayState.GROUPS);
+		addOption(option);
+
+		var option:Option = new Option('Rating Color',
+			'If checked, the Rating text will be colored depending on your current... well... Rating, same with Combo.',
+			'colorRating',
+			'bool');
+		addOption(option);
+
+		var option:Option = new Option('Network Chat Notifications',
+			'If checked, all player messages from the Network Chat will be notified to you, can be toggled with "/notify" in chat.',
+			'notifyOnChatMsg',
+			'bool');
+		addOption(option);
+
+		var option:Option = new Option('Mute PM Notifications',
+			'If checked, PM notifications are muted, can be toggled with "/notify pm" in chat.',
+			'disablePMs',
+			'bool');
+		addOption(option);
+
+		var option:Option = new Option('Mute Room Invites',
+			'If checked, room invites are muted, can be toggled with "/notify roominvite" in chat.',
+			'disableRoomInvites',
+			'bool');
+		addOption(option);
+
+		var option:Option = new Option('Disable SSL Verification',
+			'If checked, the game will no longer check for valid SSL certificates, which can lead to unsafe connections with downloads or rooms.\n(Use only if you know what you\'re doing!)',
+			'disableSSLVerify',
+			'bool');
+		option.onChange = () -> {
+			sys.ssl.Socket.DEFAULT_VERIFY_CERT = !ClientPrefs.data.disableSSLVerify;
+		};
+		addOption(option);
+
+		var option:Option = new Option('Favorite Tracks Menu Theme',
+			'If checked, the game will be picking your random favorite song as the main menu theme!',
+			'favsAsMenuTheme',
+			'bool');
+		option.onChange = () -> {
+			states.TitleState.playFreakyMusic();
+		};
+		addOption(option);
+
+		var option:Option = new Option('Disable Combo Rating',
+			'If checked, the combo rating sprite will no longer show up.',
+			'disableComboRating',
+			'bool');
+		addOption(option);
+
+		var option:Option = new Option('Disable Combo Counter',
+			'If checked, the combo counter sprite will no longer show up.',
+			'disableComboCounter',
 			'bool');
 		addOption(option);
 
@@ -203,9 +322,12 @@ class VisualsUISubState extends BaseOptionsMenu
 
 	function changeNoteSkin(note:StrumNote)
 	{
+		var data:NoteSkinStructure = NoteSkinData.getCurrent();
+		Mods.currentModDirectory = data.folder;
+
 		var skin:String = Note.defaultNoteSkin;
 		var customSkin:String = skin + Note.getNoteSkinPostfix();
-		if(Paths.fileExists('images/$customSkin.png', IMAGE)) skin = customSkin;
+		if(Paths.fileExists('images/$customSkin.png', IMAGE) || Paths.fileExists('images/$customSkin.astc', BINARY)) skin = customSkin;
 
 		note.texture = skin; //Load texture and anims
 		note.reloadNote();
@@ -214,7 +336,13 @@ class VisualsUISubState extends BaseOptionsMenu
 
 	override function destroy()
 	{
-		if(changedMusic && !OptionsState.onPlayState) FlxG.sound.playMusic(Paths.music('freakyMenu'), 1, true);
+		if(changedMusic && !OptionsState.onPlayState) states.TitleState.playFreakyMusic();
+		isOpened = false;
+		if (GameClient.isConnected()) {
+			var data:NoteSkinStructure = NoteSkinData.getCurrent(-1);
+			GameClient.send('updateNoteSkinData', [data.skin, data.folder, data.url]);
+		}
+		Mods.currentModDirectory = '';
 		super.destroy();
 	}
 
@@ -224,13 +352,8 @@ class VisualsUISubState extends BaseOptionsMenu
 			Main.fpsVar.visible = ClientPrefs.data.showFPS;
 	}
 
-	#if sys
+	#if native
 	function onChangeVSync()
-	{
-		var file:String = StorageUtil.rootDir + "vsync.txt";
-		if(FileSystem.exists(file))
-			FileSystem.deleteFile(file);
-		File.saveContent(file, Std.string(ClientPrefs.data.vsync));
-	}
+		lime.app.Application.current.window.vsync = ClientPrefs.data.vsync;
 	#end
 }
