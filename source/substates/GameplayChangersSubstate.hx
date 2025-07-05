@@ -1,5 +1,8 @@
 package substates;
 
+import states.FreeplayState;
+import online.backend.Waiter;
+import online.GameClient;
 import objects.AttachedText;
 import objects.CheckboxThingie;
 
@@ -9,9 +12,9 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 	private var curSelected:Int = 0;
 	private var optionsArray:Array<Dynamic> = [];
 
-	private var grpOptions:FlxTypedGroup<Alphabet>;
-	private var checkboxGroup:FlxTypedGroup<CheckboxThingie>;
-	private var grpTexts:FlxTypedGroup<AttachedText>;
+	private var grpOptions:FlxTypedSpriteGroup<Alphabet>;
+	private var checkboxGroup:FlxTypedSpriteGroup<CheckboxThingie>;
+	private var grpTexts:FlxTypedSpriteGroup<AttachedText>;
 
 	function getOptions()
 	{
@@ -35,7 +38,7 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 		}
 		optionsArray.push(option);
 
-		#if FLX_PITCH
+		#if !html5
 		var option:GameplayOption = new GameplayOption('Playback Rate', 'songspeed', 'float', 1);
 		option.scrollSpeed = 1;
 		option.minValue = 0.5;
@@ -43,10 +46,14 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 		option.changeValue = 0.05;
 		option.displayFormat = '%vX';
 		option.decimals = 2;
+		option.onChange = () -> {
+			if (FlxG.state is FreeplayState)
+				FreeplayState.updateFreeplayMusicPitch();
+		};
 		optionsArray.push(option);
 		#end
 
-		var option:GameplayOption = new GameplayOption('Health Gain Multiplier', 'healthgain', 'float', 1);
+		var option:GameplayOption = new GameplayOption('HP Gain Multiplier', 'healthgain', 'float', 1);
 		option.scrollSpeed = 2.5;
 		option.minValue = 0;
 		option.maxValue = 5;
@@ -54,7 +61,7 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 		option.displayFormat = '%vX';
 		optionsArray.push(option);
 
-		var option:GameplayOption = new GameplayOption('Health Loss Multiplier', 'healthloss', 'float', 1);
+		var option:GameplayOption = new GameplayOption('HP Loss Multiplier', 'healthloss', 'float', 1);
 		option.scrollSpeed = 2.5;
 		option.minValue = 0.5;
 		option.maxValue = 5;
@@ -62,9 +69,24 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 		option.displayFormat = '%vX';
 		optionsArray.push(option);
 
-		optionsArray.push(new GameplayOption('Instakill on Miss', 'instakill', 'bool', false));
-		optionsArray.push(new GameplayOption('Practice Mode', 'practice', 'bool', false));
-		optionsArray.push(new GameplayOption('Botplay', 'botplay', 'bool', false));
+		var option:GameplayOption = new GameplayOption('Botplay', 'botplay', 'bool', false);
+		optionsArray.push(option);
+
+		if (!GameClient.isConnected()) {
+			var option:GameplayOption = new GameplayOption('Instakill on Miss', 'instakill', 'bool', false);
+			optionsArray.push(option);
+
+			var option:GameplayOption = new GameplayOption('Practice Mode', 'practice', 'bool', false);
+			optionsArray.push(option);
+
+			var option:GameplayOption = new GameplayOption('Play as Opponent', 'opponentplay', 'bool', false);
+			optionsArray.push(option);
+		}
+
+		var option:GameplayOption = new GameplayOption('No Hurt Notes', 'nobadnotes', 'bool', false);
+		optionsArray.push(option);
+
+		GameClient.send("status", "In the Game Changers Menu");
 	}
 
 	public function getOptionByName(name:String)
@@ -80,22 +102,25 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 
 	public function new()
 	{
-                controls.isInSubstate = true;
-
+		controls.isInSubstate = true;
 		super();
 		
 		var bg:FlxSprite = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
 		bg.alpha = 0.6;
+		bg.scrollFactor.set();
 		add(bg);
 
 		// avoids lagspikes while scrolling through menus!
-		grpOptions = new FlxTypedGroup<Alphabet>();
+		grpOptions = new FlxTypedSpriteGroup<Alphabet>();
+		grpOptions.scrollFactor.set();
 		add(grpOptions);
 
-		grpTexts = new FlxTypedGroup<AttachedText>();
+		grpTexts = new FlxTypedSpriteGroup<AttachedText>();
+		grpTexts.scrollFactor.set();
 		add(grpTexts);
 
-		checkboxGroup = new FlxTypedGroup<CheckboxThingie>();
+		checkboxGroup = new FlxTypedSpriteGroup<CheckboxThingie>();
+		checkboxGroup.scrollFactor.set();
 		add(checkboxGroup);
 		
 		getOptions();
@@ -130,11 +155,35 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 			updateTextFrom(optionsArray[i]);
 		}
 
-		addTouchPad("LEFT_FULL", "A_B_C");
-		addTouchPadCamera();
-
 		changeSelection();
 		reloadCheckboxes();
+
+		if (GameClient.isConnected()) {
+			GameClient.room.state.gameplaySettings.onChange(receiveChange);
+			if (MusicBeatState.getState().touchPad != null)
+				MusicBeatState.getState().touchPad.visible = false;
+		}
+
+		addTouchPad('LEFT_FULL', 'A_B_C');
+		addTouchPadCamera();
+	}
+
+	function receiveChange(_:Dynamic, __:Dynamic) {
+		Waiter.put(() -> {
+			reloadCheckboxes();
+			for (option in optionsArray) {
+				updateTextFrom(option);
+			}
+			FreeplayState.updateFreeplayMusicPitch();
+		});
+	}
+
+	override function destroy() {
+		super.destroy();
+		
+		@:privateAccess
+		if (GameClient.isConnected())
+			GameClient.room.state.gameplaySettings._callbacks.clear();
 	}
 
 	var nextAccept:Int = 5;
@@ -153,6 +202,8 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 
 		if (controls.BACK) {
 			controls.isInSubstate = false;
+			if (GameClient.isConnected() && MusicBeatState.getState().touchPad != null)
+				MusicBeatState.getState().touchPad.visible = true;
 			close();
 			ClientPrefs.saveSettings();
 			FlxG.sound.play(Paths.sound('cancelMenu'));
@@ -266,7 +317,7 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 				}
 			}
 
-			if(controls.RESET || touchPad.buttonC.justPressed)
+			if(touchPad.buttonC.justPressed || controls.RESET)
 			{
 				for (i in 0...optionsArray.length)
 				{
@@ -301,10 +352,6 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 		if(nextAccept > 0) {
 			nextAccept -= 1;
 		}
-		if (touchPad == null){ //sometimes it dosent add the tpad, hopefully this fixes it
-		addTouchPad("LEFT_FULL", "A_B_C");
-		addTouchPadCamera();
-		}
 		super.update(elapsed);
 	}
 
@@ -312,6 +359,12 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 		var text:String = option.displayFormat;
 		var val:Dynamic = option.getValue();
 		if(option.type == 'percent') val *= 100;
+		switch (option.type) {
+			case 'int':
+				val = Math.round(val);
+			case 'float' | 'percent':
+				val = FlxMath.roundDecimal(val, option.decimals);
+		}
 		var def:Dynamic = option.defaultValue;
 		option.text = text.replace('%v', val).replace('%d', def);
 	}
@@ -444,10 +497,16 @@ class GameplayOption
 
 	public function getValue():Dynamic
 	{
+		if (GameClient.isConnected() && !GameClient.room.state.permitModifiers) {
+			return GameClient.getGameplaySetting(variable);
+		}
 		return ClientPrefs.data.gameplaySettings.get(variable);
 	}
 	public function setValue(value:Dynamic)
 	{
+		if (GameClient.isConnected() && !GameClient.room.state.permitModifiers) {
+			return GameClient.setGameplaySetting(variable, value);
+		}
 		ClientPrefs.data.gameplaySettings.set(variable, value);
 	}
 
