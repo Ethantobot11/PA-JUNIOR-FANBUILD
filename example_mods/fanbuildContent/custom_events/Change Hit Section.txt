@@ -1,0 +1,4 @@
+Set Must Hit Section Amount
+
+Value 1: Is section must hit? (true/false)
+Value 2: Null
