@@ -1,0 +1,4 @@
+Set Lyric Text With BF/GF Color
+
+Value 1: Dialouge
+Value 2: Time before the dialogue fades out
