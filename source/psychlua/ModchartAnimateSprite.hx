@@ -4,7 +4,7 @@ package psychlua;
 class ModchartAnimateSprite extends FlxAnimate
 {
 	public var animOffsets:Map<String, Array<Float>> = new Map<String, Array<Float>>();
-	public function new(?x:Float = 0, ?y:Float = 0, ?path:String, ?settings:FlxAnimate.Settings)
+	public function new(?x:Float = 0, ?y:Float = 0, ?path:String, ?settings:flxanimate.FlxAnimate.Settings)
 	{
 		super(x, y, path, settings);
 		antialiasing = ClientPrefs.data.antialiasing;
