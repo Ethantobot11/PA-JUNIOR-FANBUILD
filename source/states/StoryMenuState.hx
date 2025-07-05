@@ -46,6 +46,8 @@ class StoryMenuState extends MusicBeatState
 		Paths.clearStoredMemory();
 		Paths.clearUnusedMemory();
 
+		FlxG.mouse.visible = false;
+
 		PlayState.isStoryMode = true;
 		WeekData.reloadWeekFiles(true);
 		if(curWeek >= WeekData.weeksList.length) curWeek = 0;
@@ -81,7 +83,7 @@ class StoryMenuState extends MusicBeatState
 
 		#if DISCORD_ALLOWED
 		// Updating Discord Rich Presence
-		DiscordClient.changePresence("In the Menus", null);
+		DiscordClient.changePresence("In the Menus", "Story Mode");
 		#end
 
 		var num:Int = 0;
@@ -175,7 +177,7 @@ class StoryMenuState extends MusicBeatState
 		changeWeek();
 		changeDifficulty();
 
-		addTouchPad("LEFT_FULL", "A_B_X_Y");
+		addTouchPad('LEFT_FULL', 'A_B_X_Y');
 
 		super.create();
 	}
@@ -185,13 +187,13 @@ class StoryMenuState extends MusicBeatState
 		changeWeek();
 		super.closeSubState();
 		removeTouchPad();
-		addTouchPad("LEFT_FULL", "A_B_X_Y");
+		addTouchPad('LEFT_FULL', 'A_B_X_Y');
 	}
 
 	override function update(elapsed:Float)
 	{
 		// scoreText.setFormat('VCR OSD Mono', 32);
-		lerpScore = Math.floor(FlxMath.lerp(intendedScore, lerpScore, Math.exp(-elapsed * 30)));
+		lerpScore = Math.floor(FlxMath.lerp(lerpScore, intendedScore, FlxMath.bound(elapsed * 30, 0, 1)));
 		if(Math.abs(intendedScore - lerpScore) < 10) lerpScore = intendedScore;
 
 		scoreText.text = "WEEK SCORE:" + lerpScore;
@@ -238,17 +240,15 @@ class StoryMenuState extends MusicBeatState
 			else if (upP || downP)
 				changeDifficulty();
 
-			if(FlxG.keys.justPressed.CONTROL || touchPad.buttonX.justPressed)
+			if(touchPad.buttonX.justPressed || FlxG.keys.justPressed.CONTROL)
 			{
 				persistentUpdate = false;
 				openSubState(new GameplayChangersSubstate());
-				removeTouchPad();
 			}
-			else if(controls.RESET || touchPad.buttonY.justPressed)
+			else if(touchPad.buttonY.justPressed || controls.RESET)
 			{
 				persistentUpdate = false;
 				openSubState(new ResetScoreSubState('', curDifficulty, '', curWeek));
-				removeTouchPad();
 				//FlxG.sound.play(Paths.sound('scrollMenu'));
 			}
 			else if (controls.ACCEPT)
@@ -261,7 +261,7 @@ class StoryMenuState extends MusicBeatState
 		{
 			FlxG.sound.play(Paths.sound('cancelMenu'));
 			movedBack = true;
-			MusicBeatState.switchState(new MainMenuState());
+			FlxG.switchState(() -> new MainMenuState());
 		}
 
 		super.update(elapsed);
@@ -300,7 +300,7 @@ class StoryMenuState extends MusicBeatState
 	
 				PlayState.storyDifficulty = curDifficulty;
 	
-				PlayState.SONG = Song.loadFromJson(PlayState.storyPlaylist[0].toLowerCase() + diffic, PlayState.storyPlaylist[0].toLowerCase());
+				PlayState.loadSong(PlayState.storyPlaylist[0].toLowerCase() + diffic, PlayState.storyPlaylist[0].toLowerCase());
 				PlayState.campaignScore = 0;
 				PlayState.campaignMisses = 0;
 			}
@@ -314,7 +314,8 @@ class StoryMenuState extends MusicBeatState
 			{
 				FlxG.sound.play(Paths.sound('confirmMenu'));
 
-				grpWeekText.members[curWeek].isFlashing = true;
+				grpWeekText.members[curWeek].startFlashing();
+
 				for (char in grpWeekCharacters.members)
 				{
 					if (char.character != '' && char.hasConfirmAnimation)
@@ -334,8 +335,9 @@ class StoryMenuState extends MusicBeatState
 			#if (MODS_ALLOWED && DISCORD_ALLOWED)
 			DiscordClient.loadModRPC();
 			#end
+		} else {
+			FlxG.sound.play(Paths.sound('cancelMenu'));
 		}
-		else FlxG.sound.play(Paths.sound('cancelMenu'));
 	}
 
 	var tweenDifficulty:FlxTween;
