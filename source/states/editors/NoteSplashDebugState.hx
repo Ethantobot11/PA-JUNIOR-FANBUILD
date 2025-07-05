@@ -5,6 +5,10 @@ import objects.StrumNote;
 import objects.NoteSplash;
 import flixel.addons.ui.FlxInputText;
 import flixel.addons.ui.FlxUINumericStepper;
+#if sys
+import backend.io.PsychFile as File;
+import backend.io.PsychFileSystem as FileSystem;
+#end
 
 class NoteSplashDebugState extends MusicBeatState
 {
@@ -156,7 +160,7 @@ class NoteSplashDebugState extends MusicBeatState
 		if (controls.mobileC)
 			sillyText = "Press Y to Reset animation\n
                         Press A twice to save to the loaded Note Splash PNG's folder\n
-                        Press Top LEFT/RIGHT to change selected note - Arrow Keys to change offset\n
+                        Press Top LEFT/RIGHT to change selected note - Arrow Buttons to change offset\n
                         C/V - Copy & Paste";
 		else
 			sillyText = "Press SPACE to Reset animation\n
@@ -203,8 +207,8 @@ class NoteSplashDebugState extends MusicBeatState
 		var notTyping:Bool = !nameInputText.hasFocus && !imageInputText.hasFocus;
 		if(controls.BACK && notTyping)
 		{
-			MusicBeatState.switchState(new MasterEditorMenu());
-			FlxG.sound.playMusic(Paths.music('freakyMenu'));
+			FlxG.switchState(() -> new MasterEditorMenu());
+			states.TitleState.playFreakyMusic();
 			FlxG.mouse.visible = false;
 		}
 		super.update(elapsed);
@@ -274,10 +278,11 @@ class NoteSplashDebugState extends MusicBeatState
 
 		if(FlxG.keys.justPressed.ENTER || touchPad.buttonA.justPressed)
 		{
-			if (controls.mobileC)
+			if (controls.mobileC) {
 		        savedText.text = 'Press A again to save.';
-			else
+			} else {
 		        savedText.text = 'Press ENTER again to save.';
+			}
 			if(pressEnterToSave > 0) //save
 			{
 				saveFile();
@@ -432,16 +437,12 @@ class NoteSplashDebugState extends MusicBeatState
 			curAnim += change;
 			if(curAnim > maxAnims) curAnim = 1;
 			else if(curAnim < 1) curAnim = maxAnims;
-
-			if (controls.mobileC)
-			{
-				curAnimText.text = 'Current Animation: $curAnim / $maxAnims\n(Press Top UP/DOWN to change)';
-				curFrameText.text = 'Force Frame Disabled\n(Press X/E to change)';
-			}
-			else
-			{
-				curAnimText.text = 'Current Animation: $curAnim / $maxAnims\n(Press W/S to change)';
-				curFrameText.text = 'Force Frame Disabled\n(Press Q/E to change)';
+			if (controls.mobileC) {
+			curAnimText.text = 'Current Animation: $curAnim / $maxAnims\n(Press Top UP/DOWN to change)';
+			curFrameText.text = 'Force Frame Disabled\n(Press X/E to change)';
+			} else {
+			curAnimText.text = 'Current Animation: $curAnim / $maxAnims\n(Press W/S to change)';
+			curFrameText.text = 'Force Frame Disabled\n(Press Q/E to change)';
 			}
 
 			for (i in 0...maxNotes)
