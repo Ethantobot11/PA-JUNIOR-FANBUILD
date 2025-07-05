@@ -1,0 +1,57 @@
+{
+    "songs": [
+        {
+            "song": "Coward",
+            "artist": "VibreProductions"
+        },
+        {
+            "song": "Child's Play",
+            "fakeSong": "The Rapper",
+            "artist": "Keymo",
+            "desc": "A Melody of Joy"
+        },
+        {
+            "song": "My Amazing World",
+            "artist": "Corn",
+            "desc": "A Melody of Siblinghood"
+        },
+        {
+            "song": "Retcon",
+            "artist": "Rareblin\n(ft. Pattydecaffy)"
+        },
+        {
+            "song": "My Finale",
+            "artist": "Awe",
+            "desc": "A Melody of Manipulation"
+        },
+        {
+            "song": "Mindless",
+            "fakeSong": "The Man in The Shadows",
+            "artist": "Sevc_Ext_277",
+            "desc": "A Melody of Corruption"
+        },
+        {
+            "song": "Mindless v2",
+            "artist": "Sevc_Ext_277"
+        },
+        {
+            "song": "Suffering Siblings",
+            "artist": "Awe\n(ft. NdYmyuM, Kylevi, HayseedHere & Requiem Zero)",
+            "desc": "A Melody of Brotherhood"
+        },
+        {
+            "song": "Fallen Hero",
+            "artist": "IAmDaDogeOfDaFuture"
+        },
+        {
+            "song": "Come Along With Me",
+            "artist": "VibreProd.",
+            "desc": "A Melody of Deception"
+        },
+        {
+            "song": "Mindless But Awesome",
+            "fakeSong": "Mindless",
+            "artist": "Sevc_Ext_277"
+        }
+    ]
+}
