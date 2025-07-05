@@ -1,8 +1,12 @@
 package backend;
 
+#if MODS_ALLOWED
+import backend.io.PsychFile as File;
+import backend.io.PsychFileSystem as FileSystem;
+#end
 import lime.utils.Assets;
 import openfl.utils.Assets as OpenFlAssets;
-import haxe.Json;
+import tjson.TJSON as Json;
 
 typedef WeekFile =
 {
@@ -62,30 +66,41 @@ class WeekData {
 
 	// HELP: Is there any way to convert a WeekFile to WeekData without having to put all variables there manually? I'm kind of a noob in haxe lmao
 	public function new(weekFile:WeekFile, fileName:String) {
-		// here ya go - MiguelItsOut
-		for (field in Reflect.fields(weekFile))
-			if(Reflect.fields(this).contains(field)) // Reflect.hasField() won't fucking work :/
-				Reflect.setProperty(this, field, Reflect.getProperty(weekFile, field));
+		songs = weekFile.songs;
+		weekCharacters = weekFile.weekCharacters;
+		weekBackground = weekFile.weekBackground;
+		weekBefore = weekFile.weekBefore;
+		storyName = weekFile.storyName;
+		weekName = weekFile.weekName;
+		freeplayColor = weekFile.freeplayColor;
+		startUnlocked = weekFile.startUnlocked;
+		hiddenUntilUnlocked = weekFile.hiddenUntilUnlocked;
+		hideStoryMode = weekFile.hideStoryMode;
+		hideFreeplay = weekFile.hideFreeplay;
+		difficulties = weekFile.difficulties;
 
 		this.fileName = fileName;
 	}
 
-	public static function reloadWeekFiles(isStoryMode:Null<Bool> = false)
+	public static function reloadWeekFiles(?isStoryMode:Null<Bool> /*= false*/)
 	{
+		if (isStoryMode == null) // dead code btw
+			isStoryMode = PlayState.isStoryMode;
+
 		weeksList = [];
 		weeksLoaded.clear();
 		#if MODS_ALLOWED
-		var directories:Array<String> = [Paths.mods(), Paths.getSharedPath()];
+		var directories:Array<String> = [Paths.mods(), Paths.getPreloadPath()];
 		var originalLength:Int = directories.length;
 
 		for (mod in Mods.parseList().enabled)
 			directories.push(Paths.mods(mod + '/'));
 		#else
-		var directories:Array<String> = [Paths.getSharedPath()];
+		var directories:Array<String> = [Paths.getPreloadPath()];
 		var originalLength:Int = directories.length;
 		#end
 
-		var sexList:Array<String> = CoolUtil.coolTextFile(Paths.getSharedPath('weeks/weekList.txt'));
+		var sexList:Array<String> = CoolUtil.coolTextFile(Paths.getPreloadPath('weeks/weekList.txt'));
 		for (i in 0...sexList.length) {
 			for (j in 0...directories.length) {
 				var fileToCheck:String = directories[j] + 'weeks/' + sexList[i] + '.json';
@@ -100,7 +115,12 @@ class WeekData {
 						}
 						#end
 
-						if(weekFile != null && (isStoryMode == null || (isStoryMode && !weekFile.hideStoryMode) || (!isStoryMode && !weekFile.hideFreeplay))) {
+						if (
+							weekFile != null && (
+								(/*online.GameClient.isConnected() &&*/ !isStoryMode) || //freeplay unlocked patched ad free
+								((isStoryMode && !weekFile.hideStoryMode) || (!isStoryMode && !weekFile.hideFreeplay))
+							)
+						) {
 							weeksLoaded.set(sexList[i], weekFile);
 							weeksList.push(sexList[i]);
 						}
@@ -117,18 +137,18 @@ class WeekData {
 				for (daWeek in listOfWeeks)
 				{
 					var path:String = directory + daWeek + '.json';
-					if(FileSystem.exists(path))
+					if(backend.io.PsychFileSystem.exists(path))
 					{
-						addWeek(daWeek, path, directories[i], i, originalLength);
+						addWeek(isStoryMode, daWeek, path, directories[i], i, originalLength);
 					}
 				}
 
-				for (file in Paths.readDirectory(directory))
+				for (file in FileSystem.readDirectory(directory))
 				{
 					var path = haxe.io.Path.join([directory, file]);
-					if (!FileSystem.isDirectory(path) && file.endsWith('.json'))
+					if (!backend.io.PsychFileSystem.isDirectory(path) && file.endsWith('.json'))
 					{
-						addWeek(file.substr(0, file.length - 5), path, directories[i], i, originalLength);
+						addWeek(isStoryMode, file.substr(0, file.length - 5), path, directories[i], i, originalLength);
 					}
 				}
 			}
@@ -136,7 +156,7 @@ class WeekData {
 		#end
 	}
 
-	private static function addWeek(weekToCheck:String, path:String, directory:String, i:Int, originalLength:Int)
+	private static function addWeek(isStoryMode:Bool, weekToCheck:String, path:String, directory:String, i:Int, originalLength:Int)
 	{
 		if(!weeksLoaded.exists(weekToCheck))
 		{
@@ -150,7 +170,9 @@ class WeekData {
 					weekFile.folder = directory.substring(Paths.mods().length, directory.length-1);
 					#end
 				}
-				if((PlayState.isStoryMode && !weekFile.hideStoryMode) || (!PlayState.isStoryMode && !weekFile.hideFreeplay))
+				if(
+					(/*online.GameClient.isConnected() &&*/ !isStoryMode) || // freeplay unlocked patched ad free
+					((isStoryMode && !weekFile.hideStoryMode) || (!isStoryMode && !weekFile.hideFreeplay)))
 				{
 					weeksLoaded.set(weekToCheck, weekFile);
 					weeksList.push(weekToCheck);
@@ -172,7 +194,7 @@ class WeekData {
 		#end
 
 		if(rawJson != null && rawJson.length > 0) {
-			return cast tjson.TJSON.parse(rawJson);
+			return cast Json.parse(rawJson);
 		}
 		return null;
 	}
