@@ -1,0 +1,4 @@
+Set Glitch Shader Amount
+
+Value 1: Glitch Shader Intensity (Typically: 0.2-0.7)
+Value 2: Null
