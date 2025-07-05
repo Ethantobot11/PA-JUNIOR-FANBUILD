@@ -1,0 +1,2 @@
+Value 1: on/off
+Value 2: Blur intensity
