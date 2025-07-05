@@ -1,5 +1,7 @@
 package backend;
 
+import online.replay.ReplayPlayer;
+import online.replay.ReplayRecorder;
 import flixel.input.gamepad.FlxGamepadButton;
 import flixel.input.gamepad.FlxGamepadInputID;
 import flixel.input.gamepad.mappings.FlxGamepadMapping;
@@ -77,39 +79,57 @@ class Controls
 	public var BACK(get, never):Bool;
 	public var PAUSE(get, never):Bool;
 	public var RESET(get, never):Bool;
+	public var TAUNT(get, never):Bool;
+	public var SIDEBAR(get, never):Bool;
+	public var FAV(get, never):Bool;
 	private function get_ACCEPT() return justPressed('accept');
 	private function get_BACK() return justPressed('back');
 	private function get_PAUSE() return justPressed('pause');
 	private function get_RESET() return justPressed('reset');
+	private function get_TAUNT() return justPressed('taunt');
+	private function get_SIDEBAR() return justPressed('sidebar');
+	private function get_FAV() return justPressed('fav');
 
-
-	//Gamepad, Keyboard & Mobile stuff
+	//Gamepad & Keyboard stuff
 	public var keyboardBinds:Map<String, Array<FlxKey>>;
 	public var gamepadBinds:Map<String, Array<FlxGamepadInputID>>;
 	public var mobileBinds:Map<String, Array<MobileInputID>>;
-
 	public function justPressed(key:String)
 	{
+		if (moodyBlues != null && ReplayRecorder.REGISTER_BINDS.contains(key)) {
+			return moodyBlues.pressedKeys.get(key) == JUST_PRESSED;
+		}
+
 		var result:Bool = (FlxG.keys.anyJustPressed(keyboardBinds[key]) == true);
 		if(result) controllerMode = false;
 
-		return result || _myGamepadJustPressed(gamepadBinds[key]) == true || mobileCJustPressed(mobileBinds[key]) == true || touchPadJustPressed(mobileBinds[key]) == true;
+		return result || _myGamepadJustPressed(gamepadBinds[key]) == true || hitboxJustPressed(mobileBinds[key]) == true || touchPadJustPressed(mobileBinds[key]) == true;
 	}
 
 	public function pressed(key:String)
 	{
+		if (moodyBlues != null && ReplayRecorder.REGISTER_BINDS.contains(key)) {
+			var status = moodyBlues.pressedKeys.get(key);
+			return status == PRESSED || status == JUST_PRESSED;
+		}
+
 		var result:Bool = (FlxG.keys.anyPressed(keyboardBinds[key]) == true);
 		if(result) controllerMode = false;
 
-		return result || _myGamepadPressed(gamepadBinds[key]) == true || mobileCPressed(mobileBinds[key]) == true || touchPadPressed(mobileBinds[key]) == true;
+		return result || _myGamepadPressed(gamepadBinds[key]) == true || hitboxPressed(mobileBinds[key]) == true || touchPadPressed(mobileBinds[key]) == true;
 	}
 
 	public function justReleased(key:String)
 	{
+		if (moodyBlues != null && ReplayRecorder.REGISTER_BINDS.contains(key)) {
+			var status = moodyBlues.pressedKeys.get(key);
+			return status == JUST_RELEASED;
+		}
+
 		var result:Bool = (FlxG.keys.anyJustReleased(keyboardBinds[key]) == true);
 		if(result) controllerMode = false;
 
-		return result || _myGamepadJustReleased(gamepadBinds[key]) == true || mobileCJustReleased(mobileBinds[key]) == true || touchPadJustReleased(mobileBinds[key]) == true;
+		return result || _myGamepadJustReleased(gamepadBinds[key]) == true || hitboxJustReleased(mobileBinds[key]) == true || touchPadJustReleased(mobileBinds[key]) == true;
 	}
 
 	public var controllerMode:Bool = false;
@@ -159,9 +179,11 @@ class Controls
 		return false;
 	}
 
+	public var moodyBlues:ReplayPlayer;
+
 	public var isInSubstate:Bool = false; // don't worry about this it becomes true and false on it's own in MusicBeatSubstate
 	public var requestedInstance(get, default):Dynamic; // is set to MusicBeatState or MusicBeatSubstate when the constructor is called
-	public var requestedMobileC(get, default):IMobileControls; // for PlayState and EditorPlayState (hitbox and touchPad)
+	public var requestedHitbox(get, default):Hitbox; // for PlayState and EditorPlayState
 	public var mobileC(get, never):Bool;
 
 	private function touchPadPressed(keys:Array<MobileInputID>):Bool
@@ -191,28 +213,28 @@ class Controls
 		return false;
 	}
 
-	private function mobileCPressed(keys:Array<MobileInputID>):Bool
+	private function hitboxPressed(keys:Array<MobileInputID>):Bool
 	{
-		if (keys != null && requestedMobileC != null)
-			if (requestedMobileC.instance.anyPressed(keys))
+		if (keys != null && requestedHitbox != null)
+			if (requestedHitbox.anyPressed(keys))
 				return true;
 
 		return false;
 	}
 
-	private function mobileCJustPressed(keys:Array<MobileInputID>):Bool
+	private function hitboxJustPressed(keys:Array<MobileInputID>):Bool
 	{
-		if (keys != null && requestedMobileC != null)
-			if (requestedMobileC.instance.anyJustPressed(keys))
+		if (keys != null && requestedHitbox != null)
+			if (requestedHitbox.anyJustPressed(keys))
 				return true;
 
 		return false;
 	}
 
-	private function mobileCJustReleased(keys:Array<MobileInputID>):Bool
+	private function hitboxJustReleased(keys:Array<MobileInputID>):Bool
 	{
-		if (keys != null && requestedMobileC != null)
-			if (requestedMobileC.instance.anyJustReleased(keys))
+		if (keys != null && requestedHitbox != null)
+			if (requestedHitbox.anyJustReleased(keys))
 				return true;
 
 		return false;
@@ -228,9 +250,9 @@ class Controls
 	}
 
 	@:noCompletion
-	private function get_requestedMobileC():IMobileControls
+	private function get_requestedHitbox():Hitbox
 	{
-		return requestedInstance.mobileControls;
+		return requestedInstance.hitbox;
 	}
 
 	@:noCompletion
@@ -242,13 +264,12 @@ class Controls
 			return false;
 	}
 
-	// IGNORE THESE/ karim: no.
+	// IGNORE THESE
 	public static var instance:Controls;
-
 	public function new()
 	{
-		gamepadBinds = ClientPrefs.gamepadBinds;
-		keyboardBinds = ClientPrefs.keyBinds;
 		mobileBinds = ClientPrefs.mobileBinds;
+		keyboardBinds = ClientPrefs.keyBinds;
+		gamepadBinds = ClientPrefs.gamepadBinds;
 	}
 }
