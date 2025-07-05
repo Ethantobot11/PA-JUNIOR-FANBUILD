@@ -9,40 +9,35 @@ class OutdatedState extends MusicBeatState
 	{
 		super.create();
 
+		leftState = false;
+
+		final accept:String = (controls.mobileC) ? 'A' : 'ACCEPT';
+		final back:String = (controls.mobileC) ? 'B' : 'BACK';
+
 		var bg:FlxSprite = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
 		add(bg);
 
-		var guh:String;
-
-		if (controls.mobileC)
-			guh = "Sup kiddo, looks like you're running an\n
-			outdated version of Psych Engine (" + MainMenuState.psychEngineVersion + "),\n
-			please update to " + TitleState.updateVersion + "!\n
-			Press B to proceed anyway.\n
-			\n
-			Thank you for using the Port!";
-		else
-			guh = "Sup bro, looks like you're running an\n
-			outdated version of Psych Engine (" + MainMenuState.psychEngineVersion + "),\n
-			please update to " + TitleState.updateVersion + "!\n
-			Press ESCAPE to proceed anyway.\n
-			\n
-			Thank you for using the Port!";
-
-		warnText = new FlxText(0, 0, FlxG.width, guh, 32);
+		warnText = new FlxText(0, 0, FlxG.width,
+			"Sorry, but you have to update this port
+			your current version is '" + Main.PSYCH_ONLINE_VERSION + "' while
+			the latest is '" + Main.updateVersion + "'\n
+			" + accept + " - Jump into the download page!
+			" + back + " - Continue without updating.",
+			32);
 		warnText.setFormat("VCR OSD Mono", 32, FlxColor.WHITE, CENTER);
 		warnText.screenCenter(Y);
 		add(warnText);
 
-		addTouchPad("NONE", "A_B");
+		addTouchPad('NONE', 'A_B');
 	}
 
 	override function update(elapsed:Float)
 	{
 		if(!leftState) {
 			if (controls.ACCEPT) {
-				leftState = true;
-				CoolUtil.browserLoad("https://github.com/MobilePorting/FNF-PsychEngine-Mobile/releases");
+				CoolUtil.browserLoad(Main.latestRelease.html_url);
+				online.network.Auth.saveClose();
+				Sys.exit(1);
 			}
 			else if(controls.BACK) {
 				leftState = true;
@@ -53,7 +48,7 @@ class OutdatedState extends MusicBeatState
 				FlxG.sound.play(Paths.sound('cancelMenu'));
 				FlxTween.tween(warnText, {alpha: 0}, 1, {
 					onComplete: function (twn:FlxTween) {
-						MusicBeatState.switchState(new MainMenuState());
+						FlxG.switchState(() -> new MainMenuState());
 					}
 				});
 			}
