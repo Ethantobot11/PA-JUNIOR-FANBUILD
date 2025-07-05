@@ -3,10 +3,13 @@ package backend;
 import flixel.addons.ui.FlxUIState;
 import flixel.addons.transition.FlxTransitionableState;
 import flixel.FlxState;
-import backend.PsychCamera;
 
 class MusicBeatState extends FlxUIState
 {
+	public static var instance:MusicBeatState;
+	
+	private var theWorld:Bool = false;
+
 	private var curSection:Int = 0;
 	private var stepsToDo:Int = 0;
 
@@ -23,8 +26,8 @@ class MusicBeatState extends FlxUIState
 
 	public var touchPad:TouchPad;
 	public var touchPadCam:FlxCamera;
-	public var mobileControls:IMobileControls;
-	public var mobileControlsCam:FlxCamera;
+	public var hitbox:Hitbox;
+	public var hitboxCam:FlxCamera;
 
 	public function addTouchPad(DPad:String, Action:String)
 	{
@@ -47,45 +50,35 @@ class MusicBeatState extends FlxUIState
 		}
 	}
 
-	public function addMobileControls(defaultDrawTarget:Bool = false):Void
+	public function addHitbox(defaultDrawTarget:Bool = false):Void
 	{
-		var extraMode = MobileData.extraActions.get(ClientPrefs.data.extraButtons);
+		final extraMode = MobileData.extraActions.get(ClientPrefs.data.extraHints);
 
-		switch (MobileData.mode)
-		{
-			case 0: // RIGHT_FULL
-				mobileControls = new TouchPad('RIGHT_FULL', 'NONE', extraMode);
-			case 1: // LEFT_FULL
-				mobileControls = new TouchPad('LEFT_FULL', 'NONE', extraMode);
-			case 2: // CUSTOM
-				mobileControls = MobileData.getTouchPadCustom(new TouchPad('RIGHT_FULL', 'NONE', extraMode));
-			case 3: // HITBOX
-				mobileControls = new Hitbox(extraMode);
-		}
+		hitbox = new Hitbox(extraMode);
+		//hitbox = MobileData.setButtonsColors(hitbox.instance);
+		hitbox.visible = false;
 
-		mobileControls.instance = MobileData.setButtonsColors(mobileControls.instance);
-		mobileControlsCam = new FlxCamera();
-		mobileControlsCam.bgColor.alpha = 0;
-		FlxG.cameras.add(mobileControlsCam, defaultDrawTarget);
+		hitboxCam = new FlxCamera();
+		hitboxCam.bgColor.alpha = 0;
+		FlxG.cameras.add(hitboxCam, defaultDrawTarget);
+		hitbox.cameras = [hitboxCam];
 
-		mobileControls.instance.cameras = [mobileControlsCam];
-		mobileControls.instance.visible = false;
-		add(mobileControls.instance);
+		add(hitbox);
 	}
 
-	public function removeMobileControls()
+	public function removeHitbox()
 	{
-		if (mobileControls != null)
+		if (hitbox != null)
 		{
-			remove(mobileControls.instance);
-			mobileControls.instance = FlxDestroyUtil.destroy(mobileControls.instance);
-			mobileControls = null;
+			remove(hitbox);
+			hitbox = FlxDestroyUtil.destroy(hitbox);
+			hitbox = null;
 		}
 
-		if (mobileControlsCam != null)
+		if (hitboxCam != null)
 		{
-			FlxG.cameras.remove(mobileControlsCam);
-			mobileControlsCam = FlxDestroyUtil.destroy(mobileControlsCam);
+			FlxG.cameras.remove(hitboxCam);
+			hitboxCam = FlxDestroyUtil.destroy(hitboxCam);
 		}
 	}
 
@@ -103,41 +96,34 @@ class MusicBeatState extends FlxUIState
 	override function destroy()
 	{
 		removeTouchPad();
-		removeMobileControls();
+		removeHitbox();
 		
 		super.destroy();
 	}
 
-	var _psychCameraInitialized:Bool = false;
+	public static var camBeat:FlxCamera;
 
 	override function create() {
+		instance = this;
+		camBeat = FlxG.camera;
 		var skip:Bool = FlxTransitionableState.skipNextTransOut;
 		#if MODS_ALLOWED Mods.updatedOnState = false; #end
-
-		if(!_psychCameraInitialized) initPsychCamera();
 
 		super.create();
 
 		if(!skip) {
-			openSubState(new CustomFadeTransition(0.6, true));
+			openSubState(new CustomFadeTransition(0.7, true));
 		}
 		FlxTransitionableState.skipNextTransOut = false;
 		timePassedOnState = 0;
 	}
 
-	public function initPsychCamera():PsychCamera
-	{
-		var camera = new PsychCamera();
-		FlxG.cameras.reset(camera);
-		FlxG.cameras.setDefaultDrawTarget(camera, true);
-		_psychCameraInitialized = true;
-		//trace('initialized psych camera ' + Sys.cpuTime());
-		return camera;
-	}
-
 	public static var timePassedOnState:Float = 0;
 	override function update(elapsed:Float)
 	{
+		if (theWorld)
+			return super.update(elapsed);
+
 		//everyStep();
 		var oldStep:Int = curStep;
 		timePassedOnState += elapsed;
@@ -216,36 +202,19 @@ class MusicBeatState extends FlxUIState
 		curStep = lastChange.stepTime + Math.floor(shit);
 	}
 
-	public static function switchState(nextState:FlxState = null) {
-		if(nextState == null) nextState = FlxG.state;
-		if(nextState == FlxG.state)
-		{
-			resetState();
+	// credit to https://github.com/DetectiveBaldi/FNF-PsychEngine/blob/36e982e2e3e78b9b7939ecfff06f5ffdbcd9cca6/source/backend/MusicBeatState.hx
+	override function startOutro(onOutroComplete:() -> Void):Void {
+		if (!FlxTransitionableState.skipNextTransIn) {
+			FlxG.state.openSubState(new CustomFadeTransition(0.6, false));
+
+			CustomFadeTransition.finishCallback = onOutroComplete;
+
 			return;
 		}
 
-		if(FlxTransitionableState.skipNextTransIn) FlxG.switchState(nextState);
-		else startTransition(nextState);
 		FlxTransitionableState.skipNextTransIn = false;
-	}
 
-	public static function resetState() {
-		if(FlxTransitionableState.skipNextTransIn) FlxG.resetState();
-		else startTransition();
-		FlxTransitionableState.skipNextTransIn = false;
-	}
-
-	// Custom made Trans in
-	public static function startTransition(nextState:FlxState = null)
-	{
-		if(nextState == null)
-			nextState = FlxG.state;
-
-		FlxG.state.openSubState(new CustomFadeTransition(0.6, false));
-		if(nextState == FlxG.state)
-			CustomFadeTransition.finishCallback = function() FlxG.resetState();
-		else
-			CustomFadeTransition.finishCallback = function() FlxG.switchState(nextState);
+		onOutroComplete();
 	}
 
 	public static function getState():MusicBeatState {
