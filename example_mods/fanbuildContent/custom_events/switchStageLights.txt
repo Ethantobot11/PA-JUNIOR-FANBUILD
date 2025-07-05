@@ -1,0 +1,2 @@
+Value 1: true / false (light bg?)
+Value 2: true / false (keep lights?)
