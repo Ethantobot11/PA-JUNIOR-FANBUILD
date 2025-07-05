@@ -1,0 +1,51 @@
+[
+	// All types:
+	// bool - Has a checkbox only, meaning it can only be 'true' or 'false'.
+	// int - Numbers with no decimals (ex. 1, 3, 9, -1)
+	// float - Similar to int, but numbers can have decimals (ex. 1.5, 2.75)
+	// percent - Similar to float, but the displayed value is multiplied by 100 (ex. 1.1 will be displayed as "110%")
+	// string - A text instead of numbers/false and true, you gotta set up "options" variable to it
+	// key - TO BE IMPLEMENTED
+	{
+		"save": "incompatibleShaders",
+		"name": "Possibly Imcompatible Shaders", //Name shown on the mod settings menu
+		"type": "bool",
+		"description": "DISABLE IF GAME CRASHES DUE TO SHADERS.\nMOST LIKELY ON A GUMBALL SONG.", //Description shown on the mod settings menu
+		"value": true //This is the default value
+	},
+	{
+        "save": "videos",
+		"name": "Videos Allowed", //Name shown on the mod settings menu
+		"type": "bool",
+		"description": "DISABLE IF VIDEOS AREN'T LOADING!!!\nDue to game being compiled with wrong hxCodec version\nor not being on 0.7.3.", //Description shown on the mod settings menu
+		"value": true //This is the default value
+	},
+	{
+		"save": "healthDrain",
+		"name": "Health Drain", //Name shown on the mod settings menu
+		"type": "bool",
+		"description": "If unchecked, opponent will not drain your health.", //Description shown on the mod settings menu
+		"value": true //This is the default value
+	},
+	{
+        "save": "screenGlitch",
+		"name": "Screen Shake", //Name shown on the mod settings menu
+		"type": "bool",
+		"description": "If unchecked, your screen will not glitch and shake.", //Description shown on the mod settings menu
+		"value": true //This is the default value
+	},
+	{
+        "save": "gore",
+		"name": "Death & Gore", //Name shown on the mod settings menu
+		"type": "bool",
+		"description": "If unchecked, deaths won't have gore and will be replaced with the normal death", //Description shown on the mod settings menu
+		"value": true //This is the default value
+	},
+	{
+        "save": "killyourself",
+		"name": "PIBBY CORRUPTED SHAKE!?", //Name shown on the mod settings menu
+		"type": "bool",
+		"description": "the most annoying hud shake ever", //Description shown on the mod settings menu
+		"value": false //This is the default value
+    }
+]
