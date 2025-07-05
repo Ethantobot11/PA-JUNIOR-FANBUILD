@@ -1,9 +1,7 @@
 package objects;
 
-import backend.animation.PsychAnimationController;
-
+import online.GameClient;
 import shaders.RGBPalette;
-
 import flixel.graphics.frames.FlxFrame;
 
 typedef NoteSplashConfig = {
@@ -26,8 +24,6 @@ class NoteSplash extends FlxSprite
 	public function new(x:Float = 0, y:Float = 0) {
 		super(x, y);
 
-		animation = new PsychAnimationController(this);
-
 		var skin:String = null;
 		if(PlayState.SONG.splashSkin != null && PlayState.SONG.splashSkin.length > 0) skin = PlayState.SONG.splashSkin;
 		else skin = defaultNoteSplash + getSplashSkinPostfix();
@@ -37,7 +33,7 @@ class NoteSplash extends FlxSprite
 		precacheConfig(skin);
 		_configLoaded = skin;
 		scrollFactor.set();
-		//setupNoteSplash(x, y, 0);
+		setupNoteSplash(x, y, 0);
 	}
 
 	override function destroy()
@@ -181,14 +177,8 @@ class NoteSplash extends FlxSprite
 
 	function addAnimAndCheck(name:String, anim:String, ?framerate:Int = 24, ?loop:Bool = false)
 	{
-		var animFrames = [];
-		@:privateAccess
-		animation.findByPrefix(animFrames, anim); // adds valid frames to animFrames
-
-		if(animFrames.length < 1) return false;
-	
 		animation.addByPrefix(name, anim, framerate, loop);
-		return true;
+		return animation.getByName(name) != null;
 	}
 
 	static var aliveTime:Float = 0;
@@ -252,6 +242,7 @@ class PixelSplashShader extends FlxShader
 		vec4 flixel_texture2DCustom(sampler2D bitmap, vec2 coord) {
 			vec2 blocks = openfl_TextureSize / uBlocksize;
 			vec4 color = flixel_texture2D(bitmap, floor(coord * blocks) / blocks);
+
 			if (!hasTransform) {
 				return color;
 			}
